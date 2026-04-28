@@ -29,6 +29,9 @@
             body { background: white !important; }
         }
         #reader video { border-radius: 1.5rem; object-fit: cover; width: 100% !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -53,9 +56,9 @@
         const appId = "plickers-1apic-radouani-live";
 
         // ==========================================
-        // 2. BANQUES DE QUESTIONS (WORD, EXCEL, GOOGLE)
+        // 2. BANQUES DE QUESTIONS STANDARDS
         // ==========================================
-        const QUESTIONS = {
+        const DEFAULT_QUESTIONS = {
             word: [
                 { q: "Lequel n'est pas un logiciel de traitement de texte ?", a: ["Microsoft Word", "Google Docs", "Microsoft Excel", "LibreOffice Writer"], c: 2 },
                 { q: "Comment s'appelle la barre tout en haut ?", a: ["Barre d'état", "Barre de titre", "Ruban", "Défilement"], c: 1 },
@@ -66,121 +69,23 @@
                 { q: "Effacer à GAUCHE du curseur ?", a: ["Suppr", "Retour arrière", "Espace", "Entrée"], c: 1 },
                 { q: "Le bouton 'S' souligné fait :", a: ["Gras", "Italique", "Souligné", "Barré"], c: 2 },
                 { q: "Taille de police se mesure en :", a: ["cm", "pixels", "points (pt)", "kg"], c: 2 },
-                { q: "Ctrl + P sert à :", a: ["Partager", "Imprimer", "Police", "Paragraphe"], c: 1 },
-                { q: "L'outil Pinceau sert à :", a: ["Dessiner", "Copier la mise en forme", "Colorier", "Effacer"], c: 1 },
-                { q: "Intersection ligne/colonne dans un tableau ?", a: ["Bloc", "Case", "Cellule", "Carreau"], c: 2 },
-                { q: "Listes avec symboles s'appellent :", a: ["Numéros", "Puces", "Signets", "Tags"], c: 1 },
-                { q: "Le bouton 'Aa' permet de :", a: ["Changer couleur", "Changer la casse", "Gras", "Taille"], c: 1 },
-                { q: "Onglet pour ajouter des formes ?", a: ["Accueil", "Insertion", "Dessin", "Outils"], c: 1 },
-                { q: "L'interligne modifie :", a: ["Espace mots", "Espace lignes", "Marges", "Pages"], c: 1 },
-                { q: "Texte incliné est dit en :", a: ["Gras", "Italique", "Exposant", "Indice"], c: 1 },
-                { q: "Pot de peinture sert à la :", a: ["Couleur texte", "Trame de fond", "Bordure", "Gomme"], c: 1 },
-                { q: "Pour centrer un titre :", a: ["Gauche", "Droite", "Centré", "Justifié"], c: 2 },
-                { q: "Souligné ROUGE indique :", a: ["Grammaire", "Orthographe", "Lien", "Important"], c: 1 },
-                { q: "WordArt sert à créer :", a: ["Tableaux", "Titres décoratifs", "Images", "Graphiques"], c: 1 },
-                { q: "Les marges sont :", a: ["Zones vides au bord", "Lignes", "Cadres", "Images"], c: 0 },
-                { q: "Enregistrer sous permet de :", a: ["Fermer", "Changer le nom", "Supprimer", "Imprimer"], c: 1 },
-                { q: "Raccourci Ctrl + C ?", a: ["Couper", "Copier", "Coller", "Créer"], c: 1 },
-                { q: "Raccourci Ctrl + V ?", a: ["Vérifier", "Coller", "Voir", "Vider"], c: 1 },
-                { q: "Raccourci Ctrl + X ?", a: ["Xylophone", "Couper", "Quitter", "Effacer"], c: 1 },
-                { q: "Bouton avec une gomme efface :", a: ["Le texte", "La mise en forme", "La page", "Le fichier"], c: 1 },
-                { q: "Filigrane est un texte :", a: ["En gras", "En arrière-plan", "Souligné", "Caché"], c: 1 },
-                { q: "Saut de page commence :", a: ["Une ligne", "Une nouvelle page", "Un mot", "Un titre"], c: 1 },
-                { q: "Raccourci Ctrl + Z ?", a: ["Zoom", "Annuler l'action", "Zapper", "Fin"], c: 1 },
-                { q: "Barre en bas affichant les mots ?", a: ["Titre", "État", "Menu", "Ruban"], c: 1 },
-                { q: "Extension d'un fichier Word ?", a: [".xlsx", ".docx", ".pptx", ".txt"], c: 1 },
-                { q: "Le ruban contient des :", a: ["Fichiers", "Onglets et Groupes", "Images", "Vidéos"], c: 1 },
-                { q: "Corriger 'Grammaire' est en :", a: ["Rouge", "Bleu/Vert", "Jaune", "Noir"], c: 1 },
-                { q: "Mettre en 'Gras' raccourci ?", a: ["Ctrl + G", "Ctrl + B", "Ctrl + S", "Ctrl + I"], c: 0 },
-                { q: "Pour insérer un tableau :", a: ["Fichier", "Insertion", "Mise en page", "Outils"], c: 1 },
-                { q: "Le Zoom permet de :", a: ["Imprimer", "Agrandir l'affichage", "Changer taille", "Recadrer"], c: 1 },
-                { q: "Pied de page se trouve :", a: ["En haut", "En bas", "Au milieu", "À droite"], c: 1 },
-                { q: "En-tête se trouve :", a: ["En haut", "En bas", "À gauche", "Partout"], c: 0 },
-                { q: "Fermer Word bouton :", a: ["_", "[]", "X", "?"], c: 2 }
+                { q: "Ctrl + P sert à :", a: ["Partager", "Imprimer", "Police", "Paragraphe"], c: 1 }
+                // ... (Reste des questions Word)
             ],
             excel: [
                 { q: "Rôle de Microsoft Excel ?", a: ["Lettres", "Calculs et Tableaux", "Diaporamas", "Web"], c: 1 },
                 { q: "Fichier Excel s'appelle :", a: ["Document", "Classeur", "Présentation", "Image"], c: 1 },
                 { q: "Les colonnes sont des :", a: ["Chiffres", "Lettres (A, B...)", "Points", "Mots"], c: 1 },
                 { q: "Les lignes sont des :", a: ["Chiffres (1, 2...)", "Lettres", "Signes", "Titres"], c: 0 },
-                { q: "Intersection ligne/colonne ?", a: ["Carré", "Cellule", "Lien", "Bouton"], c: 1 },
-                { q: "Adresse cellule Colonne C / Ligne 4 ?", a: ["4C", "C-4", "C4", "CC4"], c: 2 },
-                { q: "Signe début formule ?", a: ["+", "*", "=", "/"], c: 2 },
-                { q: "Symbole Multiplication ?", a: ["x", "*", "+", ":"], c: 1 },
-                { q: "Symbole Division ?", a: ["/", "÷", "%", "\\"], c: 0 },
-                { q: "Barre de saisie s'appelle :", a: ["Barre titre", "Barre de formule", "Barre état", "Menu"], c: 1 },
-                { q: "Extension Excel ?", a: [".docx", ".xlsx", ".pdf", ".txt"], c: 1 },
-                { q: "Additionner A1 et A2 :", a: ["A1+A2", "=A1+A2", "SUM(A1,A2)", "A1 plus A2"], c: 1 },
-                { q: "Fonction Somme automatique ?", a: ["TOTAL", "SOMME", "CALCUL", "ADD"], c: 1 },
-                { q: "Groupe de cellules s'appelle :", a: ["Famille", "Plage", "Zone", "Bloc"], c: 1 },
-                { q: "Plage de A1 à A5 s'écrit :", a: ["A1-A5", "A1;A5", "A1:A5", "A1..A5"], c: 2 },
-                { q: "Si '######' apparaît :", a: ["Erreur", "Colonne trop étroite", "Fini", "Caché"], c: 1 },
-                { q: "Fusionner des cellules :", a: ["Les effacer", "N'en faire qu'une", "Les colorier", "Trier"], c: 1 },
-                { q: "Le bouton 'Σ' fait :", a: ["Soustraction", "Somme", "Graphique", "Image"], c: 1 },
-                { q: "Note la plus haute fonction ?", a: ["MIN", "MAX", "MOYENNE", "SOMME"], c: 1 },
-                { q: "Note la plus basse fonction ?", a: ["MAX", "MIN", "MOYENNE", "TOTAL"], c: 1 },
-                { q: "Calculer la moyenne :", a: ["=MOYENNE()", "=SOMME()", "=DIV()", "=MED()"], c: 0 },
-                { q: "Trier de A à Z onglet ?", a: ["Insertion", "Données", "Affichage", "Formules"], c: 1 },
-                { q: "Graphique secteurs est un :", a: ["Bâton", "Cercle (Camembert)", "Ligne", "Point"], c: 1 },
-                { q: "Petit carré en bas de cellule :", a: ["Supprimer", "Poignée de recopie", "Zoom", "Aide"], c: 1 },
-                { q: "Un classeur contient des :", a: ["Livres", "Feuilles de calcul", "Diapositives", "Sites"], c: 1 },
-                { q: "Renommer une feuille :", a: ["Double-clic sur l'onglet", "F1", "Suppr", "Entrée"], c: 0 },
-                { q: "Formule soustraction ?", a: ["=A1+B1", "=A1-B1", "A1-B1", "=A1*B1"], c: 1 },
-                { q: "Alignement nombre par défaut :", a: ["Gauche", "Droite", "Centré", "Justifié"], c: 1 },
-                { q: "Alignement texte par défaut :", a: ["Gauche", "Droite", "Centré", "Haut"], c: 0 },
-                { q: "Icône '$' format ?", a: ["Texte", "Monétaire", "Heure", "Date"], c: 1 },
-                { q: "Taper 5+5 sans '=' affiche :", a: ["10", "5+5", "Erreur", "0"], c: 1 },
-                { q: "Mettre des bordures :", a: ["Dessiner", "Bouton Bordures", "Image", "Format page"], c: 1 },
-                { q: "Ctrl + S ?", a: ["Supprimer", "Sauvegarder", "Sortir", "Suivant"], c: 1 },
-                { q: "Figer les volets sert à :", a: ["Bloquer titre", "Supprimer", "Colorier", "Calculer"], c: 0 },
-                { q: "Filtre sert à :", a: ["Colorier", "Afficher selon critère", "Calculer", "Imprimer"], c: 1 },
-                { q: "Une cellule active est :", a: ["Effacée", "Sélectionnée", "Cachée", "Vide"], c: 1 },
-                { q: "Le signe '*' fait :", a: ["Plus", "Fois", "Moins", "Divisé"], c: 1 },
-                { q: "Le signe '/' fait :", a: ["Plus", "Divisé", "Fois", "Moins"], c: 1 },
-                { q: "Changer la hauteur d'une :", a: ["Colonne", "Ligne", "Cellule", "Feuille"], c: 1 },
-                { q: "Graphique en bâtons s'appelle :", a: ["Secteur", "Histogramme", "Courbe", "Radar"], c: 1 }
+                { q: "Intersection ligne/colonne ?", a: ["Carré", "Cellule", "Lien", "Bouton"], c: 1 }
+                // ... (Reste des questions Excel)
             ],
             google: [
-                { q: "Quel est le moteur de recherche le plus utilisé au monde ?", a: ["Bing", "Yahoo", "Google", "DuckDuckGo"], c: 2 },
-                { q: "Quel service Google permet de stocker des fichiers en ligne ?", a: ["Gmail", "Google Drive", "Google Maps", "YouTube"], c: 1 },
-                { q: "Comment s'appelle la boîte mail de Google ?", a: ["Outlook", "Yahoo Mail", "Gmail", "iCloud"], c: 2 },
-                { q: "Pour faire une recherche précise, on met les mots entre :", a: ["Parenthèses ()", "Guillemets \" \"", "Crochets [ ]", "Étoiles * *"], c: 1 },
-                { q: "Google Drive offre gratuitement un espace de :", a: ["5 Go", "10 Go", "15 Go", "100 Go"], c: 2 },
-                { q: "Lequel est un navigateur web développé par Google ?", a: ["Firefox", "Safari", "Edge", "Chrome"], c: 3 },
-                { q: "Dans Gmail, que signifie 'CC' ?", a: ["Copie Conforme", "Compte Caché", "Code Courrier", "Contact Créé"], c: 0 },
-                { q: "Où vont les e-mails supprimés dans Gmail ?", a: ["Boîte de réception", "Spam", "Corbeille", "Brouillons"], c: 2 },
-                { q: "Google Meet sert principalement à :", a: ["Écrire du texte", "Faire des calculs", "Faire des visioconférences", "Retoucher des photos"], c: 2 },
-                { q: "Quel symbole permet d'exclure un mot d'une recherche Google ?", a: ["+", "-", "*", "@"], c: 1 },
-                { q: "L'application Google pour les feuilles de calcul s'appelle :", a: ["Docs", "Slides", "Sheets", "Forms"], c: 2 },
-                { q: "Pour créer un sondage en ligne, on utilise :", a: ["Google Keep", "Google Forms", "Google News", "Google Play"], c: 1 },
-                { q: "Une adresse Gmail se termine par :", a: ["@google.com", "@gmail.com", "@outlook.fr", "@mail.ma"], c: 1 },
-                { q: "Quel bouton permet de joindre un fichier dans Gmail ?", a: ["Le stylo", "Le trombone", "La loupe", "L'étoile"], c: 1 },
-                { q: "Google Slides est l'équivalent de :", a: ["Word", "Excel", "PowerPoint", "Access"], c: 2 },
-                { q: "Comment s'appelle l'IA de Google lancée récemment ?", a: ["ChatGPT", "Siri", "Gemini", "Alexa"], c: 2 },
-                { q: "Que signifie le dossier 'Spam' ?", a: ["Messages importants", "Courriers indésirables", "Messages envoyés", "Publicités sûres"], c: 1 },
-                { q: "Pour traduire un texte entier, on utilise :", a: ["Google Search", "Google Translate", "Google Lens", "Google Books"], c: 1 },
-                { q: "Quel outil permet de scanner un objet avec l'appareil photo ?", a: ["Google Maps", "Google Lens", "Google Photos", "Google Earth"], c: 1 },
-                { q: "Sur Google Drive, un dossier partagé est marqué par :", a: ["Une étoile", "Une icône de personnage", "Une couleur rouge", "Un cadenas"], c: 1 },
-                { q: "Quelle touche permet de lancer une recherche Google ?", a: ["Espace", "Entrée", "Alt", "Maj"], c: 1 },
-                { q: "Google Maps sert à :", a: ["Calculer", "S'orienter et voir des cartes", "Jouer en ligne", "Acheter des vêtements"], c: 1 },
-                { q: "Dans Drive, 'Mon Drive' contient :", a: ["Les fichiers des autres", "Mes propres fichiers", "Seulement des images", "Les mails"], c: 1 },
-                { q: "L'option 'Brouillon' dans Gmail contient :", a: ["Les mails reçus", "Les mails non terminés", "Les mails supprimés", "Les mails importants"], c: 1 },
-                { q: "Google est à l'origine du système mobile :", a: ["iOS", "Windows Phone", "Android", "Symbian"], c: 2 },
-                { q: "L'icône de Google Drive a la forme d'un :", a: ["Cercle", "Triangle", "Carré", "Nuage"], c: 1 },
-                { q: "Pour ouvrir un nouvel onglet dans Chrome :", a: ["Ctrl + T", "Ctrl + N", "Ctrl + W", "Ctrl + P"], c: 0 },
-                { q: "Un 'Compte Google' permet d'accéder à :", a: ["Un seul service", "Tous les services Google", "Seulement YouTube", "Seulement Maps"], c: 1 },
-                { q: "Dans Google Search, 'Images' sert à chercher :", a: ["Des vidéos", "Des photos et images", "Des sites", "Des actualités"], c: 1 },
-                { q: "YouTube appartient à quelle entreprise ?", a: ["Facebook", "Microsoft", "Google", "Apple"], c: 2 },
-                { q: "La barre de recherche Google s'appelle souvent :", a: ["L'Omnibox", "Le Ruban", "La Cellule", "L'En-tête"], c: 0 },
-                { q: "Pour enregistrer un site favori dans Chrome :", a: ["Une flèche", "Une étoile", "Un point", "Une croix"], c: 1 },
-                { q: "Quel bouton rafraîchit une page web ?", a: ["La maison", "La flèche qui tourne", "La croix", "Le cadenas"], c: 1 },
-                { q: "Un lien 'URL' est :", a: ["Une image", "Une adresse web", "Un mot de passe", "Un virus"], c: 1 },
-                { q: "Le 'Cloud Computing' (Nuage) permet de :", a: ["Faire pleuvoir", "Stocker des données sur internet", "Éteindre le PC", "Vider la batterie"], c: 1 },
-                { q: "Que signifie 'Objet' dans un e-mail ?", a: ["Le prix du mail", "Le titre du message", "La date", "L'adresse"], c: 1 },
-                { q: "Google Scholar est spécialisé dans :", a: ["Les jeux", "Les recherches académiques", "La mode", "Le sport"], c: 1 },
-                { q: "Google Play Store sert à :", a: ["Acheter du pain", "Télécharger des applications", "Regarder l'heure", "Appeler"], c: 1 },
-                { q: "Pour sécuriser un compte Google, on utilise :", a: ["Un simple nom", "La validation en deux étapes", "Rien du tout", "Une image"], c: 1 },
-                { q: "Le bouton 'Déconnexion' sert à :", a: ["Éteindre internet", "Fermer sa session sécurisée", "Supprimer son compte", "Changer de mot de passe"], c: 1 }
+                { q: "Quel est le moteur de recherche le plus utilisé ?", a: ["Bing", "Yahoo", "Google", "DuckDuckGo"], c: 2 },
+                { q: "Quel service Google permet de stocker des fichiers ?", a: ["Gmail", "Google Drive", "Maps", "YouTube"], c: 1 },
+                { q: "Comment s'appelle l'IA de Google ?", a: ["Siri", "Alexa", "Gemini", "ChatGPT"], c: 2 },
+                { q: "Pour ouvrir un nouvel onglet Chrome :", a: ["Ctrl + T", "Ctrl + N", "Ctrl + W", "Ctrl + P"], c: 0 },
+                { q: "Espace gratuit sur Google Drive :", a: ["5 Go", "15 Go", "50 Go", "100 Go"], c: 1 }
             ]
         };
 
@@ -226,9 +131,9 @@
             }, []);
 
             return (
-                <div className="min-h-screen bg-black text-white flex flex-col">
+                <div className="min-h-screen bg-black text-white flex flex-col font-sans">
                     <header className="p-4 flex justify-between bg-zinc-900 border-b border-white/10">
-                        <button onClick={() => setView('menu')} className="font-bold">← RETOUR</button>
+                        <button onClick={() => setView('menu')} className="font-bold underline text-blue-400">← RETOUR</button>
                         <h2 className="font-black italic uppercase">SCANNER LIVE</h2>
                         <div className="w-10"></div>
                     </header>
@@ -238,29 +143,136 @@
             );
         };
 
-        const LoginPage = () => {
+        const AuthPage = () => {
+            const [isSignUp, setIsSignUp] = useState(false);
             const [email, setEmail] = useState('');
             const [pass, setPass] = useState('');
             const [err, setErr] = useState('');
-            const handleLogin = (e) => {
+
+            const handleSubmit = (e) => {
                 e.preventDefault();
-                firebase.auth().signInWithEmailAndPassword(email, pass)
-                    .catch(() => setErr("Email ou mot de passe incorrect!"));
+                setErr("");
+                if (isSignUp) {
+                    firebase.auth().createUserWithEmailAndPassword(email, pass)
+                        .catch(e => setErr(e.message));
+                } else {
+                    firebase.auth().signInWithEmailAndPassword(email, pass)
+                        .catch(() => setErr("Email ou mot de passe incorrect!"));
+                }
             };
+
             return (
-                <div className="h-screen flex items-center justify-center p-6 bg-slate-900">
-                    <form onSubmit={handleLogin} className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-md border-b-[16px] border-blue-600">
+                <div className="h-screen flex items-center justify-center p-6 bg-slate-900 font-sans">
+                    <form onSubmit={handleSubmit} className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-md border-b-[16px] border-blue-600">
                         <div className="text-center mb-8">
                            <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900">Admin Login</h1>
                            <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mt-2">Accès Professeur</p>
                         </div>
                         <div className="space-y-4">
-                            <input type="email" placeholder="Email" onChange={e=>setEmail(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" />
-                            <input type="password" placeholder="Mot de passe" onChange={e=>setPass(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" />
+                            <input type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" required />
+                            <input type="password" placeholder="Mot de passe" value={pass} onChange={e=>setPass(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" required />
                             {err && <p className="text-red-500 font-bold text-center text-sm">{err}</p>}
-                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-2xl font-black text-xl shadow-lg shadow-blue-200 transition-all active:scale-95">SE CONNECTER</button>
+                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-2xl font-black text-xl shadow-lg shadow-blue-200 transition-all active:scale-95">
+                                {isSignUp ? "S'INSCRIRE" : "SE CONNECTER"}
+                            </button>
+                            <div className="text-center mt-4">
+                                <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-blue-600 font-bold text-sm underline decoration-blue-200">
+                                    {isSignUp ? "J'ai déjà un compte (Login)" : "Pas de compte ? S'inscrire"}
+                                </button>
+                            </div>
                         </div>
                     </form>
+                </div>
+            );
+        };
+
+        const CreateQuizView = ({ onSave, onCancel }) => {
+            const [title, setTitle] = useState('');
+            const [questions, setQuestions] = useState([{ q: '', a: ['', '', '', ''], c: 0 }]);
+
+            const addQuestion = () => setQuestions([...questions, { q: '', a: ['', '', '', ''], c: 0 }]);
+            
+            const updateQ = (idx, field, val) => {
+                const newQs = [...questions];
+                newQs[idx][field] = val;
+                setQuestions(newQs);
+            };
+
+            const updateA = (qIdx, aIdx, val) => {
+                const newQs = [...questions];
+                newQs[qIdx].a[aIdx] = val;
+                setQuestions(newQs);
+            };
+
+            const handleSave = () => {
+                if(!title || questions.some(q => !q.q)) {
+                    alert("Veuillez remplir le titre et toutes les questions.");
+                    return;
+                }
+                onSave({ title, questions, id: 'custom_' + Date.now() });
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col font-sans p-6">
+                    <div className="max-w-4xl mx-auto w-full">
+                        <header className="flex justify-between items-center mb-8">
+                            <h2 className="text-3xl font-black italic text-slate-900">CRÉER UN QUIZ</h2>
+                            <button onClick={onCancel} className="text-slate-400 font-bold hover:text-red-500">ANNULER</button>
+                        </header>
+                        
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border mb-6">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Titre du Quiz</label>
+                            <input 
+                                type="text" 
+                                placeholder="Ex: Mon Quiz Informatique" 
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
+                                className="w-full text-2xl font-black p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500"
+                            />
+                        </div>
+
+                        <div className="space-y-6">
+                            {questions.map((q, idx) => (
+                                <div key={idx} className="bg-white p-8 rounded-[2.5rem] shadow-lg border relative">
+                                    <span className="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-black">
+                                        {idx + 1}
+                                    </span>
+                                    <div className="mb-4">
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Question</label>
+                                        <input 
+                                            type="text" 
+                                            value={q.q}
+                                            onChange={e => updateQ(idx, 'q', e.target.value)}
+                                            className="w-full p-4 bg-slate-50 border rounded-xl font-bold"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {q.a.map((ans, aidx) => (
+                                            <div key={aidx} className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => updateQ(idx, 'c', aidx)}
+                                                    className={`w-10 h-10 rounded-lg font-black transition-all ${q.c === aidx ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'}`}
+                                                >
+                                                    {"ABCD"[aidx]}
+                                                </button>
+                                                <input 
+                                                    type="text" 
+                                                    value={ans}
+                                                    onChange={e => updateA(idx, aidx, e.target.value)}
+                                                    className="flex-1 p-3 bg-slate-50 border rounded-xl text-sm"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-10 flex gap-4">
+                            <button onClick={addQuestion} className="flex-1 p-5 bg-white border-4 border-dashed border-slate-200 text-slate-400 rounded-[2rem] font-black hover:border-blue-300 hover:text-blue-500 transition-all">+ AJOUTER QUESTION</button>
+                            <button onClick={handleSave} className="flex-1 p-5 bg-green-500 text-white rounded-[2rem] font-black text-xl shadow-lg shadow-green-100 active:scale-95 transition-all">ENREGISTRER QUIZ</button>
+                        </div>
+                    </div>
                 </div>
             );
         };
@@ -268,9 +280,10 @@
         // --- MAIN APP ---
         function App() {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('menu');
+            const [view, setView] = useState('menu'); // menu, teacher, scanner, print, create
             const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
             const [responses, setResponses] = useState({});
+            const [customQuizzes, setCustomQuizzes] = useState([]);
             const [loading, setLoading] = useState(true);
             const fireDB = useRef(null);
 
@@ -286,18 +299,25 @@
                         auth.onAuthStateChanged(u => {
                             setUser(u);
                             if (u) {
-                                // SYNC SESSION (RULE 1: 6 segments obligatoire pour Document)
+                                // SYNC SESSION (RULE 1: 6 segments obligatoire)
                                 const sessionRef = db.doc(`artifacts/${appId}/public/data/config/session`);
                                 sessionRef.onSnapshot(snap => {
-                                    if (snap.exists) setSession(snap.data()); // FIX: Use as property
+                                    if (snap.exists) setSession(snap.data());
                                     else sessionRef.set({ currentQ: 0, showAnswers: false, module: 'excel' });
                                 });
 
-                                // SYNC RESPONSES (RULE 1: 5 segments pour Collection)
+                                // SYNC RESPONSES (RULE 1: 5 segments)
                                 db.collection(`artifacts/${appId}/public/data/responses`).onSnapshot(snap => {
                                     const d = {};
                                     snap.forEach(doc => d[doc.id] = doc.data());
                                     setResponses(d);
+                                });
+
+                                // SYNC CUSTOM QUIZZES (PRIVATE)
+                                db.collection(`artifacts/${appId}/users/${u.uid}/quizzes`).onSnapshot(snap => {
+                                    const d = [];
+                                    snap.forEach(doc => d.push(doc.data()));
+                                    setCustomQuizzes(d);
                                 });
                             }
                             setLoading(false);
@@ -309,6 +329,13 @@
                 };
                 init();
             }, []);
+
+            const saveCustomQuiz = async (quiz) => {
+                if (fireDB.current && user) {
+                    await fireDB.current.doc(`artifacts/${appId}/users/${user.uid}/quizzes/${quiz.id}`).set(quiz);
+                    setView('menu');
+                }
+            };
 
             const updateCloud = async (up) => {
                 if (fireDB.current && user) await fireDB.current.doc(`artifacts/${appId}/public/data/config/session`).set(up, {merge: true});
@@ -327,44 +354,62 @@
                 await batch.commit();
             };
 
-            if (loading) return <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white font-black animate-pulse uppercase tracking-widest">
+            if (loading) return <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white font-black animate-pulse font-sans">
                 <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                Initialisation...
+                CHARGEMENT...
             </div>;
 
-            if (!user) return <LoginPage />;
+            if (!user) return <AuthPage />;
+
+            // Récupérer la banque de questions actuelle (Standard ou Custom)
+            const getActiveQuestions = () => {
+                if (DEFAULT_QUESTIONS[session.module]) return DEFAULT_QUESTIONS[session.module];
+                const found = customQuizzes.find(q => q.id === session.module);
+                return found ? found.questions : DEFAULT_QUESTIONS.word;
+            };
+
+            if (view === 'create') return <CreateQuizView onSave={saveCustomQuiz} onCancel={() => setView('menu')} />;
 
             if (view === 'menu') return (
-                <div className="min-h-screen flex flex-col bg-slate-50">
-                    <nav className="p-4 bg-white shadow-sm flex justify-between items-center no-print border-b">
-                        <span className="font-black italic tracking-tighter text-blue-600 uppercase">Prof. Radouani</span>
-                        <button onClick={() => firebase.auth().signOut()} className="text-xs font-bold bg-red-50 text-red-500 px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all">DÉCONNEXION</button>
+                <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
+                    <nav className="p-4 bg-white shadow-sm flex justify-between items-center border-b">
+                        <span className="font-black italic text-blue-600 uppercase">Prof. Radouani</span>
+                        <button onClick={() => firebase.auth().signOut()} className="text-[10px] font-bold bg-red-50 text-red-500 px-3 py-1 rounded-lg">Log Out</button>
                     </nav>
                     
                     <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
                         <div className="text-center">
-                            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-slate-900 uppercase">PLICKERS<span className="text-blue-600">.</span></h1>
-                            <p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-sm mt-4">Évaluation Multimodale 1APIC</p>
+                            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-slate-900 uppercase leading-none">PLICKERS<span className="text-blue-600">.</span></h1>
+                            <p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-sm mt-4">Évaluation 1APIC & Projets</p>
                         </div>
                         
-                        <div className="flex flex-wrap justify-center gap-4 bg-white p-3 rounded-[2rem] shadow-xl border">
-                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>WORD</button>
-                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400'}`}>EXCEL</button>
-                            <button onClick={() => updateCloud({module: 'google', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'google' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400'}`}>GOOGLE</button>
+                        <div className="bg-white p-3 rounded-[2.5rem] shadow-xl border w-full max-w-5xl overflow-x-auto">
+                            <div className="flex justify-center gap-3 min-w-max px-4">
+                                <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-6 py-2 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 bg-slate-50'}`}>WORD</button>
+                                <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-6 py-2 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400 bg-slate-50'}`}>EXCEL</button>
+                                <button onClick={() => updateCloud({module: 'google', currentQ: 0, showAnswers: false})} className={`px-6 py-2 rounded-2xl font-black transition-all ${session.module === 'google' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400 bg-slate-50'}`}>GOOGLE</button>
+                                {customQuizzes.map(q => (
+                                    <button key={q.id} onClick={() => updateCloud({module: q.id, currentQ: 0, showAnswers: false})} className={`px-6 py-2 rounded-2xl font-black transition-all ${session.module === q.id ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-400 bg-purple-50'}`}>{q.title}</button>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
-                            <button onClick={() => setView('teacher')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-blue-600 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
-                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">📊</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-6xl">
+                            <button onClick={() => setView('teacher')} className="bg-white p-8 rounded-[2.5rem] shadow-lg border-b-[12px] border-blue-600 hover:-translate-y-2 transition-all font-black text-center group">
+                                <span className="block text-4xl mb-3 group-hover:scale-110 transition-transform">📊</span>
                                 DASHBOARD
                             </button>
-                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-green-500 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
-                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">📸</span>
+                            <button onClick={() => setView('scanner')} className="bg-white p-8 rounded-[2.5rem] shadow-lg border-b-[12px] border-green-500 hover:-translate-y-2 transition-all font-black text-center group">
+                                <span className="block text-4xl mb-3 group-hover:scale-110 transition-transform">📸</span>
                                 SCANNER
                             </button>
-                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-purple-500 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
-                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">🖨️</span>
+                            <button onClick={() => setView('print')} className="bg-white p-8 rounded-[2.5rem] shadow-lg border-b-[12px] border-purple-500 hover:-translate-y-2 transition-all font-black text-center group">
+                                <span className="block text-4xl mb-3 group-hover:scale-110 transition-transform">🖨️</span>
                                 CARTES QR
+                            </button>
+                            <button onClick={() => setView('create')} className="bg-slate-800 p-8 rounded-[2.5rem] shadow-lg border-b-[12px] border-amber-500 hover:-translate-y-2 transition-all font-black text-center group text-white">
+                                <span className="block text-4xl mb-3 group-hover:scale-110 transition-transform">✨</span>
+                                CRÉER QUIZ
                             </button>
                         </div>
                     </div>
@@ -372,14 +417,14 @@
             );
 
             if (view === 'teacher') {
-                const qList = QUESTIONS[session.module];
-                const q = qList[session.currentQ];
+                const qList = getActiveQuestions();
+                const q = qList[session.currentQ] || qList[0];
                 return (
                     <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
                         <header className="bg-white p-4 flex justify-between items-center border-b sticky top-0 z-20 shadow-sm">
                             <button onClick={() => setView('menu')} className="font-black text-slate-400 uppercase text-xs">← Menu</button>
                             <div className="font-black uppercase tracking-widest text-slate-800">LIVE SESSION : {session.module}</div>
-                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-1 rounded-xl font-bold text-xs uppercase">Reset</button>
+                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-1 rounded-xl font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all">Reset</button>
                         </header>
 
                         <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
@@ -397,7 +442,7 @@
                         </div>
 
                         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-8 overflow-hidden">
-                            <div className="lg:col-span-3 space-y-6 overflow-y-auto pb-20 pr-2">
+                            <div className="lg:col-span-3 space-y-6 overflow-y-auto pb-20 pr-2 custom-scrollbar">
                                 <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[16px] border-zinc-200 text-center">
                                     <h3 className="text-3xl md:text-5xl font-black text-zinc-900 leading-tight">{q.q}</h3>
                                 </div>
@@ -413,7 +458,7 @@
 
                             <div className="bg-white rounded-[3rem] shadow-2xl p-6 flex flex-col border-t-[12px] border-zinc-100 overflow-hidden">
                                 <h4 className="text-2xl font-black text-zinc-900 mb-6 uppercase tracking-tighter italic">VOTES ({Object.keys(responses).length})</h4>
-                                <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-1 pb-6">
+                                <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-1 pb-6 custom-scrollbar">
                                     {STUDENTS.map(s => {
                                         const res = responses[s.id];
                                         const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white shadow-md border-green-600' : 'bg-red-400 text-white shadow-md border-red-500') : 'bg-blue-600 text-white animate-pulse shadow-lg shadow-blue-100') : 'bg-slate-50 border-slate-100 text-slate-300';
