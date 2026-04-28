@@ -5,22 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plickers 1APIC - Prof A. RADOUANI</title>
     
-    <!-- Bibliothèques Cloud (Nécessite Internet) -->
+    <!-- Scripts de base -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Bibliothèques Utilitaires -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-
-        window.FirebaseSDK = { initializeApp, getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, deleteDoc, query, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken };
-    </script>
+    <!-- Firebase SDK (Version Compat pour stabilité maximale) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
@@ -30,45 +28,33 @@
             .page-break { page-break-after: always !important; }
             body { background: white !important; }
         }
-        /* Fix pour le scanner */
-        #reader video { border-radius: 1.5rem; object-fit: cover; }
+        #reader video { border-radius: 1.5rem; object-fit: cover; width: 100% !important; }
     </style>
 </head>
 <body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // 1. CONFIGURATION FIREBASE
+        // 1. CONFIGURATION FIREBASE (MISE À JOUR)
         // ==========================================
-      const firebaseConfig = {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAF7aaeksLKsjCBLhDzTDpJjfv8fapq8WM",
+            authDomain: "excel-e3987.firebaseapp.com",
+            projectId: "excel-e3987",
+            storageBucket: "excel-e3987.firebasestorage.app",
+            messagingSenderId: "916795973569",
+            appId: "1:916795973569:web:4b51c831384f9d9c845940",
+            measurementId: "G-Z8B1GNY2QK"
+        };
+        
+        // Identifiant unique pour vos données sur le Cloud
+        const uniqueAppId = "plickers-1apic-radouani-live";
 
-  apiKey: "AIzaSyAF7aaeksLKsjCBLhDzTDpJjfv8fapq8WM",
-
-  authDomain: "excel-e3987.firebaseapp.com",
-
-  projectId: "excel-e3987",
-
-  storageBucket: "excel-e3987.firebasestorage.app",
-
-  messagingSenderId: "916795973569",
-
-  appId: "1:916795973569:web:4b51c831384f9d9c845940",
-
-  measurementId: "G-Z8B1GNY2QK"
-
-};
-
-
-// Initialize Firebase
-
-const app = initializeApp(firebaseConfig);
-
-const analytics = getAnalytics(app);
         // ==========================================
-        // 2. BANQUES DE QUESTIONS (40 + 40)
+        // 2. BANQUES DE QUESTIONS (40 WORD + 40 EXCEL)
         // ==========================================
         const QUESTIONS = {
             word: [
@@ -175,35 +161,38 @@ const analytics = getAnalytics(app);
         };
 
         // --- VUE SCANNER ---
-        const ScannerView = ({ submitVote, session, setView }) => {
+        const ScannerComp = ({ onScan, setView, currentQ }) => {
             const [last, setLast] = useState(null);
             const scannerRef = useRef(null);
 
             useEffect(() => {
-                if (!window.Html5Qrcode) return;
-                const scanner = new Html5Qrcode("reader");
-                scannerRef.current = scanner;
-                
-                scanner.start(
-                    { facingMode: "environment" },
-                    { fps: 15, qrbox: { width: 250, height: 250 } },
-                    (text) => {
-                        const parts = text.split('-');
-                        if (parts.length === 2) {
-                            const [sId, char] = parts;
-                            const idx = "ABCD".indexOf(char);
-                            if (idx !== -1) {
-                                submitVote(sId, idx);
-                                setLast(`S${sId}:${char} ✅`);
-                                if (navigator.vibrate) navigator.vibrate(70);
+                const start = async () => {
+                    if (!window.Html5Qrcode) return;
+                    const scanner = new Html5Qrcode("reader");
+                    scannerRef.current = scanner;
+                    try {
+                        await scanner.start(
+                            { facingMode: "environment" },
+                            { fps: 15, qrbox: { width: 250, height: 250 } },
+                            (text) => {
+                                const parts = text.split('-');
+                                if (parts.length === 2) {
+                                    const [sId, char] = parts;
+                                    const idx = "ABCD".indexOf(char);
+                                    if (idx !== -1) {
+                                        onScan(sId, idx);
+                                        setLast(`Élève ${sId} : ${char} ✅`);
+                                        if (navigator.vibrate) navigator.vibrate(70);
+                                    }
+                                }
                             }
-                        }
-                    }
-                ).catch(err => console.error("Erreur scanner:", err));
-
+                        );
+                    } catch (e) { console.error(e); }
+                };
+                start();
                 return () => { 
                     if (scannerRef.current && scannerRef.current.isScanning) {
-                        scannerRef.current.stop().catch(() => {}); 
+                        scannerRef.current.stop().catch(()=>{}); 
                     }
                 };
             }, []);
@@ -227,174 +216,132 @@ const analytics = getAnalytics(app);
 
         function App() {
             const [view, setView] = useState('menu');
-            const [db, setDb] = useState(null);
-            const [user, setUser] = useState(null);
             const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
             const [responses, setResponses] = useState({});
             const [loading, setLoading] = useState(true);
+            const fireDB = useRef(null);
 
             // Initialisation Firebase (Règle 3: Auth avant requêtes)
             useEffect(() => {
-                const initFirebase = async () => {
-                    if (!window.FirebaseSDK) {
+                const init = async () => {
+                    if (!firebaseConfig.apiKey) {
                         setLoading(false);
                         return;
                     }
-
-                    // Vérifier si la config est valide pour éviter l'erreur de clé API
-                    if (!firebaseConfig || !firebaseConfig.apiKey) {
-                        console.warn("Configuration Firebase manquante ou incomplète. Passage en mode démo.");
-                        setLoading(false);
-                        return;
-                    }
-
-                    const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = window.FirebaseSDK;
-                    
                     try {
-                        const app = initializeApp(firebaseConfig);
-                        const auth = getAuth(app);
-                        const firestore = getFirestore(app);
-                        
-                        // Authentification
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        const app = firebase.initializeApp(firebaseConfig);
+                        const db = firebase.firestore(app);
+                        const auth = firebase.auth(app);
+                        fireDB.current = db;
 
-                        onAuthStateChanged(auth, (u) => {
-                            if (u) {
-                                setUser(u);
-                                setDb(firestore);
-                                setLoading(false);
-                            } else {
-                                setLoading(false);
-                            }
+                        await auth.signInAnonymously();
+
+                        // Sync Session
+                        db.doc(`artifacts/${uniqueAppId}/public/data/config/session`).onSnapshot((snap) => {
+                            if (snap.exists) setSession(snap.data());
                         });
+
+                        // Sync Réponses
+                        db.collection(`artifacts/${uniqueAppId}/public/data/responses`).onSnapshot((snap) => {
+                            const d = {};
+                            snap.forEach(doc => d[doc.id] = doc.data());
+                            setResponses(d);
+                        });
+
+                        setLoading(false);
                     } catch (e) {
-                        console.error("Erreur Firebase:", e);
+                        console.error("Firebase Error:", e);
                         setLoading(false);
                     }
                 };
-                initFirebase();
+                init();
             }, []);
 
-            // Sync Temps Réel
-            useEffect(() => {
-                if (!db || !user) return;
-                const { doc, onSnapshot, collection } = window.FirebaseSDK;
-
-                const unsubSess = onSnapshot(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session'), 
-                    (snap) => { if (snap.exists()) setSession(snap.data()); },
-                    (err) => console.error("Erreur Sync Session:", err)
-                );
-
-                const unsubResp = onSnapshot(collection(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses'), 
-                    (snap) => {
-                        const d = {};
-                        snap.forEach(doc => d[doc.id] = doc.data());
-                        setResponses(d);
-                    },
-                    (err) => console.error("Erreur Sync Réponses:", err)
-                );
-
-                return () => { unsubSess(); unsubResp(); };
-            }, [db, user]);
-
             const updateCloud = async (up) => {
-                if (!db || !user) {
-                    setSession(prev => ({ ...prev, ...up })); // Mode local
+                const newSess = { ...session, ...up };
+                if (!fireDB.current) {
+                    setSession(newSess);
                     return;
                 }
-                const { doc, updateDoc, setDoc } = window.FirebaseSDK;
-                const ref = doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session');
-                try { await updateDoc(ref, up); } catch(e) { await setDoc(ref, { ...session, ...up }); }
+                await fireDB.current.doc(`artifacts/${uniqueAppId}/public/data/config/session`).set(newSess, {merge: true});
             };
 
             const submitVote = async (sId, aIdx) => {
-                if (!db || !user) {
-                    setResponses(prev => ({ ...prev, [sId]: { answerIdx: aIdx, t: Date.now() } })); // Mode local
+                if (!fireDB.current) {
+                    setResponses(prev => ({ ...prev, [sId]: { answerIdx: aIdx, t: Date.now() } }));
                     return;
                 }
-                const { doc, setDoc } = window.FirebaseSDK;
-                await setDoc(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses', sId), { answerIdx: aIdx, t: Date.now() });
+                await fireDB.current.doc(`artifacts/${uniqueAppId}/public/data/responses/${sId}`).set({ answerIdx: aIdx, t: Date.now() });
             };
 
             const resetVotes = async () => {
-                if (!db || !user) {
+                if (!fireDB.current) {
                     setResponses({});
-                    setSession(prev => ({ ...prev, showAnswers: false }));
+                    updateCloud({ showAnswers: false });
                     return;
                 }
-                const { doc, deleteDoc } = window.FirebaseSDK;
                 await updateCloud({ showAnswers: false });
-                for (const id of Object.keys(responses)) {
-                    await deleteDoc(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses', id));
-                }
+                const snap = await fireDB.current.collection(`artifacts/${uniqueAppId}/public/data/responses`).get();
+                const batch = fireDB.current.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
             };
 
             if (loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
                     <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="font-bold uppercase tracking-widest animate-pulse">Initialisation...</p>
+                    <p className="font-bold uppercase tracking-widest">Connexion...</p>
                 </div>
             );
 
-            // --- RENDU DES VUES ---
-
-            if (view === 'menu') {
-                return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-                        <h1 className="text-6xl font-black mb-2 italic">PLICKERS MASTER</h1>
-                        <p className="text-slate-400 font-bold mb-10 tracking-[0.3em] uppercase">Prof. A. RADOUANI</p>
-                        
-                        <div className="bg-white p-3 rounded-3xl shadow-sm mb-10 flex gap-4 border">
-                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100'}`}>WORD</button>
-                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-100'}`}>EXCEL</button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
-                            <button onClick={() => setView('teacher')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-blue-600 hover:translate-y-[-5px] transition-all">
-                                <div className="text-6xl mb-4">💻</div>
-                                <div className="font-black text-2xl uppercase">Dashboard</div>
-                            </button>
-                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-green-500 hover:translate-y-[-5px] transition-all">
-                                <div className="text-6xl mb-4">📸</div>
-                                <div className="font-black text-2xl uppercase">Scanner</div>
-                            </button>
-                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-purple-500 hover:translate-y-[-5px] transition-all">
-                                <div className="text-6xl mb-4">🖨️</div>
-                                <div className="font-black text-2xl uppercase">Cartes</div>
-                            </button>
-                        </div>
-                        {!db && <p className="mt-8 text-amber-600 font-bold bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">Mode Local Actif (Pas de clé API)</p>}
+            if (view === 'menu') return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                    <h1 className="text-6xl font-black mb-2 italic tracking-tighter">PLICKERS<span className="text-blue-600">.</span></h1>
+                    <p className="text-slate-400 font-bold mb-10 tracking-widest uppercase">Prof. A. RADOUANI</p>
+                    
+                    <div className="bg-white p-3 rounded-3xl shadow-sm mb-10 flex gap-4 border">
+                        <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100'}`}>WORD</button>
+                        <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-100'}`}>EXCEL</button>
                     </div>
-                );
-            }
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+                        <button onClick={() => setView('teacher')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-blue-600 hover:scale-105 transition-all">
+                            <div className="text-6xl mb-4">💻</div>
+                            <div className="font-black text-2xl uppercase">Dashboard</div>
+                        </button>
+                        <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-green-500 hover:scale-105 transition-all">
+                            <div className="text-6xl mb-4">📸</div>
+                            <div className="font-black text-2xl uppercase">Scanner</div>
+                        </button>
+                        <button onClick={() => setView('print')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-purple-500 hover:scale-105 transition-all">
+                            <div className="text-6xl mb-4">🖨️</div>
+                            <div className="font-black text-2xl uppercase">Cartes</div>
+                        </button>
+                    </div>
+                </div>
+            );
 
             if (view === 'teacher') {
-                const questions = QUESTIONS[session.module];
-                const q = questions[session.currentQ];
-
+                const q = QUESTIONS[session.module][session.currentQ];
                 return (
                     <div className="min-h-screen flex flex-col bg-slate-50">
                         <header className="bg-white p-4 shadow-sm flex justify-between items-center border-b sticky top-0 z-20">
                             <button onClick={() => setView('menu')} className="font-black text-slate-400">← MENU</button>
                             <div className="font-black uppercase tracking-widest">{session.module} LIVE 1APIC</div>
-                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold">RESET</button>
+                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold hover:bg-red-500 hover:text-white transition-all">RESET</button>
                         </header>
 
                         <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
                             <div className="flex items-center gap-4">
-                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl hover:bg-zinc-200 transition-all border shadow-sm">◀</button>
-                                <div className="text-center bg-zinc-50 px-8 py-2 rounded-2xl border">
-                                    <span className="block text-[10px] font-black text-slate-400">Question</span>
-                                    <span className="text-4xl font-black">{session.currentQ + 1} / {questions.length}</span>
+                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl border font-bold">◀</button>
+                                <div className="text-center bg-zinc-50 px-8 py-2 rounded-2xl border min-w-[150px]">
+                                    <span className="block text-[10px] font-black text-zinc-400 uppercase">Question</span>
+                                    <span className="text-4xl font-black">{session.currentQ + 1} / {QUESTIONS[session.module].length}</span>
                                 </div>
-                                <button onClick={() => updateCloud({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl hover:bg-zinc-200 transition-all border shadow-sm">▶</button>
+                                <button onClick={() => updateCloud({currentQ: Math.min(QUESTIONS[session.module].length - 1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl border font-bold">▶</button>
                             </div>
-                            <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-16 py-5 rounded-full font-black text-2xl shadow-2xl transition-all active:scale-95 ${session.showAnswers ? 'bg-slate-900 text-white' : 'bg-amber-500 text-white shadow-amber-200'}`}>
-                                {session.showAnswers ? "REFAIRE LE SCAN" : "AFFICHER LA RÉPONSE"}
+                            <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-16 py-5 rounded-full font-black text-2xl shadow-2xl transition-all active:scale-95 ${session.showAnswers ? 'bg-zinc-900 text-white' : 'bg-amber-500 text-white shadow-amber-200'}`}>
+                                {session.showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
                             </button>
                         </div>
 
@@ -403,7 +350,7 @@ const analytics = getAnalytics(app);
                                 <div className="bg-white p-10 rounded-[3rem] shadow-xl border-b-[16px] border-zinc-200">
                                     <h3 className="text-3xl md:text-5xl font-black text-zinc-900 leading-tight text-center">{q.q}</h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
                                     {q.a.map((ans, i) => (
                                         <div key={i} className={`p-8 rounded-[2rem] border-4 flex items-center gap-8 transition-all duration-700 ${session.showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-800 scale-[1.02] shadow-xl' : 'bg-white border-white shadow-md'}`}>
                                             <span className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-black ${session.showAnswers && i === q.c ? 'bg-white text-green-600 animate-bounce' : 'bg-black text-white'}`}>{"ABCD"[i]}</span>
@@ -436,36 +383,32 @@ const analytics = getAnalytics(app);
                 );
             }
 
-            if (view === 'scanner') {
-                return <ScannerView submitVote={submitVote} session={session} setView={setView} />;
-            }
+            if (view === 'scanner') return <ScannerComp onScan={submitVote} setView={setView} currentQ={session.currentQ} />;
 
-            if (view === 'print') {
-                return (
-                    <div className="bg-white min-h-screen p-4">
-                        <div className="no-print mb-10 p-6 bg-slate-50 rounded-[2rem] border flex justify-between items-center">
-                            <button onClick={() => setView('menu')} className="font-black text-slate-600 bg-white px-6 py-2 rounded-xl shadow-sm border">← RETOUR</button>
-                            <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">IMPRIMER PDF</button>
-                        </div>
-                        <div className="max-w-[21cm] mx-auto space-y-10">
-                            {STUDENTS.map(s => (
-                                <div key={s.id} className="grid grid-cols-2 gap-4 page-break py-4">
-                                    {["A", "B", "C", "D"].map(L => (
-                                        <div key={L} className="border-[8px] border-black rounded-[3rem] p-10 flex flex-col items-center justify-between h-[13.5cm] bg-white">
-                                            <div className="text-9xl font-black leading-none">{L}</div>
-                                            <LocalQR text={`${s.id}-${L}`} />
-                                            <div className="text-center w-full border-t-4 border-black pt-4">
-                                                <div className="font-black text-2xl uppercase tracking-tighter">{s.name}</div>
-                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {s.id} | MASTER QUIZ</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
+            if (view === 'print') return (
+                <div className="bg-white min-h-screen p-4">
+                    <div className="no-print mb-10 p-6 bg-slate-50 rounded-[2rem] border flex justify-between items-center">
+                        <button onClick={() => setView('menu')} className="font-black text-slate-600 bg-white px-6 py-2 rounded-xl shadow-sm border">← RETOUR</button>
+                        <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">IMPRIMER PDF</button>
                     </div>
-                );
-            }
+                    <div className="max-w-[21cm] mx-auto space-y-10">
+                        {STUDENTS.map(s => (
+                            <div key={s.id} className="grid grid-cols-2 gap-4 page-break py-4">
+                                {["A", "B", "C", "D"].map(L => (
+                                    <div key={L} className="border-[8px] border-black rounded-[3rem] p-10 flex flex-col items-center justify-between h-[13.5cm] bg-white">
+                                        <div className="text-9xl font-black leading-none">{L}</div>
+                                        <LocalQR text={`${s.id}-${L}`} />
+                                        <div className="text-center w-full border-t-4 border-black pt-4">
+                                            <div className="font-black text-2xl uppercase tracking-tighter">{s.name}</div>
+                                            <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {s.id} | MASTER QUIZ</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
