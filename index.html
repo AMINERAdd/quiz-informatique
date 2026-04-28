@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plickers Master - Prof A. RADOUANI</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always !important; }
+        }
+    </style>
+</head>
+<body class="bg-zinc-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        // Importation manuelle des icônes Lucide pour Babel
+        const { 
+            Camera, Presentation, Printer, RotateCcw, 
+            ChevronRight, ChevronLeft, Eye, FileText, Table, Loader2 
+        } = lucide;
+
+        // --- CONFIGURATION (À REMPLACER PAR TES INFOS FIREBASE SI TU EN AS) ---
+        // Si tu n'as pas de Firebase, l'app fonctionnera en mode local (sans synchro téléphone/PC)
+        const appId = "plickers-1apic-radouani";
+
+        // --- BANQUE DE QUESTIONS ---
+        const QUESTION_BANKS = {
+            word: [
+                { q: "Lequel n'est pas un logiciel de traitement de texte ?", a: ["Microsoft Word", "Google Docs", "Microsoft Excel", "LibreOffice Writer"], c: 2 },
+                { q: "Comment appelle-t-on la barre située tout en haut ?", a: ["Barre d'état", "Barre de titre", "Le ruban", "Barre de défilement"], c: 1 },
+                { q: "Raccourci pour sélectionner tout le texte ?", a: ["Ctrl + S", "Ctrl + A", "Ctrl + C", "Ctrl + V"], c: 1 }
+            ],
+            excel: [
+                { q: "Rôle principal de Microsoft Excel ?", a: ["Lettres", "Calculs et Tableaux", "Diaporamas", "Internet"], c: 1 },
+                { q: "Adresse cellule Colonne B / Ligne 5 ?", a: ["5B", "B-5", "B5", "BB5"], c: 2 },
+                { q: "Signe pour commencer une formule ?", a: ["+", "*", "=", "/"], c: 2 }
+            ]
+        };
+
+        const DEFAULT_STUDENTS = Array.from({ length: 30 }, (_, i) => ({ id: (i + 1).toString(), name: `Élève ${i + 1}` }));
+
+        // --- COMPOSANT QR CODE ---
+        const LocalQRCode = ({ data, size = 150 }) => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                const qr = qrcode(0, 'L');
+                qr.addData(data);
+                qr.make();
+                containerRef.current.innerHTML = qr.createSvgTag(5, 0);
+            }, [data]);
+            return <div ref={containerRef} className="flex items-center justify-center bg-white" />;
+        };
+
+        // --- APPLICATION PRINCIPALE ---
+        function App() {
+            const [view, setView] = useState('menu');
+            const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
+            const [responses, setResponses] = useState({});
+
+            const updateSession = (up) => setSession(prev => ({ ...prev, ...up }));
+            
+            const submitAnswer = (sId, aIdx) => {
+                setResponses(prev => ({ ...prev, [sId]: { answerIdx: aIdx } }));
+            };
+
+            const resetResponses = () => {
+                setResponses({});
+                updateSession({ showAnswers: false });
+            };
+
+            // Menu Principal
+            if (view === 'menu') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-10">
+                        <div className="text-center">
+                            <h1 className="text-6xl font-black text-zinc-900 italic">PLICKERS<span className="text-blue-600">.</span></h1>
+                            <p className="text-zinc-400 font-bold uppercase tracking-widest">Prof. A. RADOUANI</p>
+                        </div>
+                        
+                        <div className="flex gap-4 bg-white p-4 rounded-3xl shadow-xl border">
+                            <button onClick={() => updateSession({module: 'word'})} className={`px-6 py-3 rounded-2xl font-bold ${session.module === 'word' ? 'bg-blue-600 text-white' : 'bg-zinc-100'}`}>WORD</button>
+                            <button onClick={() => updateSession({module: 'excel'})} className={`px-6 py-3 rounded-2xl font-bold ${session.module === 'excel' ? 'bg-green-600 text-white' : 'bg-zinc-100'}`}>EXCEL</button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+                            <button onClick={() => setView('teacher')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-blue-600 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
+                                <Presentation size={48} className="text-blue-600"/>
+                                <span className="font-black text-xl">DASHBOARD</span>
+                            </button>
+                            <button onClick={() => setView('scanner')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-green-500 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
+                                <Camera size={48} className="text-green-500"/>
+                                <span className="font-black text-xl">SCANNER</span>
+                            </button>
+                            <button onClick={() => setView('print')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-purple-500 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
+                                <Printer size={48} className="text-purple-500"/>
+                                <span className="font-black text-xl">CARTES</span>
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Dashboard Enseignant
+            if (view === 'teacher') {
+                const questions = QUESTION_BANKS[session.module];
+                const q = questions[session.currentQ];
+
+                return (
+                    <div className="min-h-screen flex flex-col">
+                        <header className="bg-white p-4 shadow flex justify-between items-center border-b no-print">
+                            <button onClick={() => setView('menu')} className="text-zinc-400 font-bold">← MENU</button>
+                            <h2 className="font-black uppercase">{session.module} SESSION</h2>
+                            <button onClick={resetResponses} className="text-red-500 font-bold">RESET</button>
+                        </header>
+
+                        <div className="p-6 bg-white border-b flex justify-between items-center no-print">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => updateSession({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-2 bg-zinc-100 rounded-lg"><ChevronLeft/></button>
+                                <span className="font-black text-2xl">{session.currentQ + 1} / {questions.length}</span>
+                                <button onClick={() => updateSession({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-2 bg-zinc-100 rounded-lg"><ChevronRight/></button>
+                            </div>
+                            <button onClick={() => updateSession({showAnswers: !session.showAnswers})} className={`px-8 py-3 rounded-full font-black text-white ${session.showAnswers ? 'bg-zinc-800' : 'bg-amber-500'}`}>
+                                {session.showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
+                            </button>
+                        </div>
+
+                        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            <div className="lg:col-span-3 space-y-6">
+                                <div className="bg-white p-10 rounded-[2rem] shadow-xl border-b-8 border-zinc-200">
+                                    <h3 className="text-4xl font-black">{q.q}</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {q.a.map((opt, i) => (
+                                        <div key={i} className={`p-6 rounded-2xl border-2 flex items-center gap-4 text-xl font-bold ${session.showAnswers && i === q.c ? 'bg-green-500 text-white' : 'bg-white'}`}>
+                                            <span className="w-10 h-10 bg-zinc-900 text-white rounded flex items-center justify-center">{"ABCD"[i]}</span>
+                                            {opt}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-[2rem] shadow-xl p-4 overflow-y-auto max-h-[70vh]">
+                                <h4 className="font-black mb-4 border-b pb-2">SCORES ({Object.keys(responses).length})</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {DEFAULT_STUDENTS.map(s => {
+                                        const res = responses[s.id];
+                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white' : 'bg-red-500 text-white') : 'bg-blue-600 text-white') : 'bg-zinc-100 text-zinc-300';
+                                        return (
+                                            <div key={s.id} className={`p-2 rounded-xl text-[10px] font-bold text-center ${color}`}>
+                                                #{s.id} {res && "ABCD"[res.answerIdx]}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Scanner (Mode simplifié pour démo sans Firebase)
+            if (view === 'scanner') {
+                return (
+                    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-10">
+                        <Camera size={64} className="text-green-500 mb-4" />
+                        <h2 className="text-2xl font-black mb-8 text-center">MODE SCANNER ACTIF</h2>
+                        <p className="text-center text-zinc-500 max-w-sm mb-10">
+                            (Sur un serveur réel avec Firebase, la caméra s'ouvre ici et envoie les données au Dashboard).
+                        </p>
+                        <button onClick={() => setView('menu')} className="bg-white text-black px-10 py-3 rounded-full font-black">RETOUR</button>
+                    </div>
+                );
+            }
+
+            // Impression
+            if (view === 'print') {
+                return (
+                    <div className="p-8">
+                        <button onClick={() => setView('menu')} className="no-print mb-10 bg-zinc-900 text-white px-6 py-2 rounded-xl">← RETOUR</button>
+                        <div className="flex flex-col gap-10">
+                            {DEFAULT_STUDENTS.map(s => (
+                                <div key={s.id} className="grid grid-cols-2 gap-4 page-break">
+                                    {["A", "B", "C", "D"].map(L => (
+                                        <div key={L} className="border-4 border-black p-10 flex flex-col items-center justify-between h-[13cm] rounded-[2rem]">
+                                            <div className="text-8xl font-black">{L}</div>
+                                            <LocalQRCode data={`${s.id}-${L}`} />
+                                            <div className="text-center font-black uppercase text-xl">{s.name}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
