@@ -3,17 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plickers Master - Prof A. RADOUANI</title>
+    <title>Plickers 1APIC - Prof A. RADOUANI</title>
     
+    <!-- Bibliothèques Cloud (Nécessite Internet) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        window.FirebaseSDK = { initializeApp, getFirestore, doc, setDoc, onSnapshot, updateDoc, collection, deleteDoc, query, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken };
+    </script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
+        body { font-family: 'Poppins', sans-serif; }
         @media print {
             .no-print { display: none !important; }
             .page-break { page-break-after: always !important; }
@@ -21,136 +32,358 @@
         }
     </style>
 </head>
-<body class="bg-zinc-50">
+<body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- BANQUE DE QUESTIONS (40 WORD + 40 EXCEL) ---
-        // (J'ai mis un échantillon, tu peux rajouter les autres ici)
-        const QUESTION_BANKS = {
+        // ==========================================
+        // 1. CONFIGURATION FIREBASE
+        // ==========================================
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "",
+            authDomain: "",
+            projectId: "",
+            storageBucket: "",
+            messagingSenderId: "",
+            appId: ""
+        };
+        const uniqueAppId = typeof __app_id !== 'undefined' ? __app_id : "plickers-1apic-radouani";
+
+        // ==========================================
+        // 2. BANQUES DE QUESTIONS (40 + 40)
+        // ==========================================
+        const QUESTIONS = {
             word: [
                 { q: "Lequel n'est pas un logiciel de traitement de texte ?", a: ["Microsoft Word", "Google Docs", "Microsoft Excel", "LibreOffice Writer"], c: 2 },
-                { q: "Comment appelle-t-on la barre située tout en haut ?", a: ["Barre d'état", "Barre de titre", "Le ruban", "Barre de défilement"], c: 1 }
+                { q: "Comment s'appelle la barre tout en haut ?", a: ["Barre d'état", "Barre de titre", "Ruban", "Défilement"], c: 1 },
+                { q: "Icône de la disquette signifie ?", a: ["Imprimer", "Enregistrer", "Ouvrir", "Copier"], c: 1 },
+                { q: "Ctrl + A permet de :", a: ["Annuler", "Tout sélectionner", "Agrandir", "Aligner"], c: 1 },
+                { q: "Orientation 'Paysage' est :", a: ["Verticale", "Horizontale", "Carrée", "Inclinée"], c: 1 },
+                { q: "Changer la police se fait dans l'onglet :", a: ["Insertion", "Accueil", "Affichage", "Révision"], c: 1 },
+                { q: "Effacer à GAUCHE du curseur ?", a: ["Suppr", "Retour arrière", "Espace", "Entrée"], c: 1 },
+                { q: "Le bouton 'S' souligné fait :", a: ["Gras", "Italique", "Souligné", "Barré"], c: 2 },
+                { q: "Taille de police se mesure en :", a: ["cm", "pixels", "points (pt)", "kg"], c: 2 },
+                { q: "Ctrl + P sert à :", a: ["Partager", "Imprimer", "Police", "Paragraphe"], c: 1 },
+                { q: "L'outil Pinceau sert à :", a: ["Dessiner", "Copier la mise en forme", "Colorier", "Effacer"], c: 1 },
+                { q: "Intersection ligne/colonne dans un tableau ?", a: ["Bloc", "Case", "Cellule", "Carreau"], c: 2 },
+                { q: "Listes avec symboles s'appellent :", a: ["Numéros", "Puces", "Signets", "Tags"], c: 1 },
+                { q: "Le bouton 'Aa' permet de :", a: ["Changer couleur", "Changer la casse", "Gras", "Taille"], c: 1 },
+                { q: "Onglet pour ajouter des formes ?", a: ["Accueil", "Insertion", "Dessin", "Outils"], c: 1 },
+                { q: "L'interligne modifie :", a: ["Espace mots", "Espace lignes", "Marges", "Pages"], c: 1 },
+                { q: "Texte incliné est dit en :", a: ["Gras", "Italique", "Exposant", "Indice"], c: 1 },
+                { q: "Pot de peinture sert à la :", a: ["Couleur texte", "Trame de fond", "Bordure", "Gomme"], c: 1 },
+                { q: "Pour centrer un titre :", a: ["Gauche", "Droite", "Centré", "Justifié"], c: 2 },
+                { q: "Souligné ROUGE indique :", a: ["Grammaire", "Orthographe", "Lien", "Important"], c: 1 },
+                { q: "WordArt sert à créer :", a: ["Tableaux", "Titres décoratifs", "Images", "Graphiques"], c: 1 },
+                { q: "Les marges sont :", a: ["Zones vides au bord", "Lignes", "Cadres", "Images"], c: 0 },
+                { q: "Enregistrer sous permet de :", a: ["Fermer", "Changer le nom", "Supprimer", "Imprimer"], c: 1 },
+                { q: "Raccourci Ctrl + C ?", a: ["Couper", "Copier", "Coller", "Créer"], c: 1 },
+                { q: "Raccourci Ctrl + V ?", a: ["Vérifier", "Coller", "Voir", "Vider"], c: 1 },
+                { q: "Raccourci Ctrl + X ?", a: ["Xylophone", "Couper", "Quitter", "Effacer"], c: 1 },
+                { q: "Bouton avec une gomme efface :", a: ["Le texte", "La mise en forme", "La page", "Le fichier"], c: 1 },
+                { q: "Filigrane est un texte :", a: ["En gras", "En arrière-plan", "Souligné", "Caché"], c: 1 },
+                { q: "Saut de page commence :", a: ["Une ligne", "Une nouvelle page", "Un mot", "Un titre"], c: 1 },
+                { q: "Raccourci Ctrl + Z ?", a: ["Zoom", "Annuler l'action", "Zapper", "Fin"], c: 1 },
+                { q: "Barre en bas affichant les mots ?", a: ["Titre", "État", "Menu", "Ruban"], c: 1 },
+                { q: "Extension d'un fichier Word ?", a: [".xlsx", ".docx", ".pptx", ".txt"], c: 1 },
+                { q: "Le ruban contient des :", a: ["Fichiers", "Onglets et Groupes", "Images", "Vidéos"], c: 1 },
+                { q: "Corriger 'Grammaire' est en :", a: ["Rouge", "Bleu/Vert", "Jaune", "Noir"], c: 1 },
+                { q: "Mettre en 'Gras' raccourci ?", a: ["Ctrl + G", "Ctrl + B", "Ctrl + S", "Ctrl + I"], c: 0 },
+                { q: "Pour insérer un tableau :", a: ["Fichier", "Insertion", "Mise en page", "Outils"], c: 1 },
+                { q: "Le Zoom permet de :", a: ["Imprimer", "Agrandir l'affichage", "Changer taille", "Recadrer"], c: 1 },
+                { q: "Pied de page se trouve :", a: ["En haut", "En bas", "Au milieu", "À droite"], c: 1 },
+                { q: "En-tête se trouve :", a: ["En haut", "En bas", "À gauche", "Partout"], c: 0 },
+                { q: "Fermer Word bouton :", a: ["_", "[]", "X", "?"], c: 2 }
             ],
             excel: [
-                { q: "Rôle principal de Microsoft Excel ?", a: ["Lettres", "Calculs et Tableaux", "Diaporamas", "Internet"], c: 1 },
-                { q: "Adresse cellule Colonne B / Ligne 5 ?", a: ["5B", "B-5", "B5", "BB5"], c: 2 }
+                { q: "Rôle de Microsoft Excel ?", a: ["Lettres", "Calculs et Tableaux", "Diaporamas", "Web"], c: 1 },
+                { q: "Fichier Excel s'appelle :", a: ["Document", "Classeur", "Présentation", "Image"], c: 1 },
+                { q: "Les colonnes sont des :", a: ["Chiffres", "Lettres (A, B...)", "Points", "Mots"], c: 1 },
+                { q: "Les lignes sont des :", a: ["Chiffres (1, 2...)", "Lettres", "Signes", "Titres"], c: 0 },
+                { q: "Intersection ligne/colonne ?", a: ["Carré", "Cellule", "Lien", "Bouton"], c: 1 },
+                { q: "Adresse cellule Colonne C / Ligne 4 ?", a: ["4C", "C-4", "C4", "CC4"], c: 2 },
+                { q: "Signe début formule ?", a: ["+", "*", "=", "/"], c: 2 },
+                { q: "Symbole Multiplication ?", a: ["x", "*", "+", ":"], c: 1 },
+                { q: "Symbole Division ?", a: ["/", "÷", "%", "\\"], c: 0 },
+                { q: "Barre de saisie s'appelle :", a: ["Barre titre", "Barre de formule", "Barre état", "Menu"], c: 1 },
+                { q: "Extension Excel ?", a: [".docx", ".xlsx", ".pdf", ".txt"], c: 1 },
+                { q: "Additionner A1 et A2 :", a: ["A1+A2", "=A1+A2", "SUM(A1,A2)", "A1 plus A2"], c: 1 },
+                { q: "Fonction Somme automatique ?", a: ["TOTAL", "SOMME", "CALCUL", "ADD"], c: 1 },
+                { q: "Groupe de cellules s'appelle :", a: ["Famille", "Plage", "Zone", "Bloc"], c: 1 },
+                { q: "Plage de A1 à A5 s'écrit :", a: ["A1-A5", "A1;A5", "A1:A5", "A1..A5"], c: 2 },
+                { q: "Si '######' apparaît :", a: ["Erreur", "Colonne trop étroite", "Fini", "Caché"], c: 1 },
+                { q: "Fusionner des cellules :", a: ["Les effacer", "N'en faire qu'une", "Les colorier", "Trier"], c: 1 },
+                { q: "Le bouton 'Σ' fait :", a: ["Soustraction", "Somme", "Graphique", "Image"], c: 1 },
+                { q: "Note la plus haute fonction ?", a: ["MIN", "MAX", "MOYENNE", "SOMME"], c: 1 },
+                { q: "Note la plus basse fonction ?", a: ["MAX", "MIN", "MOYENNE", "TOTAL"], c: 1 },
+                { q: "Calculer la moyenne :", a: ["=MOYENNE()", "=SOMME()", "=DIV()", "=MED()"], c: 0 },
+                { q: "Trier de A à Z onglet ?", a: ["Insertion", "Données", "Affichage", "Formules"], c: 1 },
+                { q: "Graphique secteurs est un :", a: ["Bâton", "Cercle (Camembert)", "Ligne", "Point"], c: 1 },
+                { q: "Petit carré en bas de cellule :", a: ["Supprimer", "Poignée de recopie", "Zoom", "Aide"], c: 1 },
+                { q: "Un classeur contient des :", a: ["Livres", "Feuilles de calcul", "Diapositives", "Sites"], c: 1 },
+                { q: "Renommer une feuille :", a: ["Double-clic sur l'onglet", "F1", "Suppr", "Entrée"], c: 0 },
+                { q: "Formule soustraction ?", a: ["=A1+B1", "=A1-B1", "A1-B1", "=A1*B1"], c: 1 },
+                { q: "Alignement nombre par défaut :", a: ["Gauche", "Droite", "Centré", "Justifié"], c: 1 },
+                { q: "Alignement texte par défaut :", a: ["Gauche", "Droite", "Centré", "Haut"], c: 0 },
+                { q: "Icône '$' format ?", a: ["Texte", "Monétaire", "Heure", "Date"], c: 1 },
+                { q: "Taper 5+5 sans '=' affiche :", a: ["10", "5+5", "Erreur", "0"], c: 1 },
+                { q: "Mettre des bordures :", a: ["Dessiner", "Bouton Bordures", "Image", "Format page"], c: 1 },
+                { q: "Ctrl + S ?", a: ["Supprimer", "Sauvegarder", "Sortir", "Suivant"], c: 1 },
+                { q: "Figer les volets sert à :", a: ["Bloquer titre", "Supprimer", "Colorier", "Calculer"], c: 0 },
+                { q: "Filtre sert à :", a: ["Colorier", "Afficher selon critère", "Calculer", "Imprimer"], c: 1 },
+                { q: "Une cellule active est :", a: ["Effacée", "Sélectionnée", "Cachée", "Vide"], c: 1 },
+                { q: "Le signe '*' fait :", a: ["Plus", "Fois", "Moins", "Divisé"], c: 1 },
+                { q: "Le signe '/' fait :", a: ["Plus", "Divisé", "Fois", "Moins"], c: 1 },
+                { q: "Changer la hauteur d'une :", a: ["Colonne", "Ligne", "Cellule", "Feuille"], c: 1 },
+                { q: "Graphique en bâtons s'appelle :", a: ["Secteur", "Histogramme", "Courbe", "Radar"], c: 1 }
             ]
         };
 
-        const DEFAULT_STUDENTS = Array.from({ length: 30 }, (_, i) => ({ id: (i + 1).toString(), name: `Élève ${i + 1}` }));
+        const STUDENTS = Array.from({ length: 30 }, (_, i) => ({ id: (i + 1).toString(), name: `Élève ${i + 1}` }));
 
-        // --- COMPOSANT QR CODE ---
-        const LocalQRCode = ({ data, size = 150 }) => {
-            const containerRef = useRef(null);
+        // --- COMPOSANTS ---
+
+        const LocalQR = ({ text }) => {
+            const divRef = useRef(null);
             useEffect(() => {
                 if (window.qrcode) {
                     const qr = qrcode(0, 'L');
-                    qr.addData(data);
+                    qr.addData(text);
                     qr.make();
-                    containerRef.current.innerHTML = qr.createSvgTag(5, 0);
+                    divRef.current.innerHTML = qr.createSvgTag(4, 0);
                 }
-            }, [data]);
-            return <div ref={containerRef} className="flex items-center justify-center bg-white" style={{width: size, height: size}} />;
+            }, [text]);
+            return <div ref={divRef} className="flex justify-center bg-white p-2"></div>;
         };
 
-        // --- APPLICATION ---
+        // --- SOUS-VUES POUR ÉVITER L'ERREUR DE HOOKS ---
+
+        const ScannerView = ({ submitVote, session, setView }) => {
+            const [last, setLast] = useState(null);
+            useEffect(() => {
+                if (!window.Html5Qrcode) return;
+                const scanner = new Html5Qrcode("reader");
+                scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 15, qrbox: { width: 250, height: 250 } },
+                    (text) => {
+                        const parts = text.split('-');
+                        if (parts.length === 2) {
+                            const [sId, char] = parts;
+                            const idx = "ABCD".indexOf(char);
+                            if (idx !== -1) {
+                                submitVote(sId, idx);
+                                setLast(`S${sId}:${char} ✅`);
+                                if (navigator.vibrate) navigator.vibrate(70);
+                            }
+                        }
+                    }
+                ).catch(console.error);
+                return () => { if (scanner.isScanning) scanner.stop().catch(() => {}); };
+            }, []);
+
+            return (
+                <div className="min-h-screen bg-black text-white flex flex-col">
+                    <header className="p-4 flex justify-between items-center bg-zinc-900 border-b border-white/10">
+                        <button onClick={() => setView('menu')} className="text-xs font-bold text-zinc-400">← RETOUR</button>
+                        <h2 className="font-black text-green-500 uppercase tracking-tighter italic">SCANNER LIVE</h2>
+                        <div className="w-10"></div>
+                    </header>
+                    <div className="flex-1 relative flex flex-col items-center justify-center">
+                        <div id="reader" className="w-full h-full max-w-lg"></div>
+                        {last && <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-green-500 px-8 py-4 rounded-full font-black text-2xl shadow-2xl animate-bounce z-50">{last}</div>}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- COMPOSANT PRINCIPAL ---
+
         function App() {
             const [view, setView] = useState('menu');
-            const [module, setModule] = useState('excel');
-            const [currentQ, setCurrentQ] = useState(0);
-            const [showAnswers, setShowAnswers] = useState(false);
+            const [db, setDb] = useState(null);
+            const [user, setUser] = useState(null);
+            const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
             const [responses, setResponses] = useState({});
+            const [loading, setLoading] = useState(true);
 
-            const resetQuiz = () => {
-                setResponses({});
-                setShowAnswers(false);
-                setCurrentQ(0);
+            // Initialisation Firebase (Règle 3: Auth avant requêtes)
+            useEffect(() => {
+                const initFirebase = async () => {
+                    if (!window.FirebaseSDK) {
+                        setLoading(false);
+                        return;
+                    }
+                    const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = window.FirebaseSDK;
+                    
+                    try {
+                        const app = initializeApp(firebaseConfig);
+                        const auth = getAuth(app);
+                        const firestore = getFirestore(app);
+                        
+                        // Auth d'abord
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+
+                        onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                setUser(u);
+                                setDb(firestore);
+                                setLoading(false);
+                            }
+                        });
+                    } catch (e) {
+                        console.error("Erreur Firebase:", e);
+                        setLoading(false);
+                    }
+                };
+                initFirebase();
+            }, []);
+
+            // Sync Temps Réel (Règle 1: Chemins stricts)
+            useEffect(() => {
+                if (!db || !user) return;
+                const { doc, onSnapshot, collection } = window.FirebaseSDK;
+
+                const unsubSess = onSnapshot(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session'), 
+                    (snap) => { if (snap.exists()) setSession(snap.data()); },
+                    (err) => console.error(err)
+                );
+
+                const unsubResp = onSnapshot(collection(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses'), 
+                    (snap) => {
+                        const d = {};
+                        snap.forEach(doc => d[doc.id] = doc.data());
+                        setResponses(d);
+                    },
+                    (err) => console.error(err)
+                );
+
+                return () => { unsubSess(); unsubResp(); };
+            }, [db, user]);
+
+            const updateCloud = async (up) => {
+                if (!db || !user) return;
+                const { doc, updateDoc, setDoc } = window.FirebaseSDK;
+                const ref = doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session');
+                try { await updateDoc(ref, up); } catch(e) { await setDoc(ref, { ...session, ...up }); }
             };
 
-            // Vue Menu
+            const submitVote = async (sId, aIdx) => {
+                if (!db || !user) return;
+                const { doc, setDoc } = window.FirebaseSDK;
+                await setDoc(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses', sId), { answerIdx: aIdx, t: Date.now() });
+            };
+
+            const resetVotes = async () => {
+                if (!db || !user) return;
+                const { doc, deleteDoc } = window.FirebaseSDK;
+                await updateCloud({ showAnswers: false });
+                for (const id of Object.keys(responses)) {
+                    await deleteDoc(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses', id));
+                }
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="font-bold uppercase tracking-widest animate-pulse">Chargement...</p>
+                </div>
+            );
+
+            // --- VUES CONDITIONNELLES (SANS HOOKS À L'INTÉRIEUR) ---
+
             if (view === 'menu') {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-                        <h1 className="text-5xl font-black text-slate-900 mb-2 italic">PLICKERS MASTER</h1>
-                        <p className="text-slate-400 font-bold mb-10 tracking-widest uppercase">Prof. A. RADOUANI</p>
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                        <h1 className="text-6xl font-black mb-2 italic">PLICKERS MASTER</h1>
+                        <p className="text-slate-400 font-bold mb-10 tracking-[0.3em] uppercase">Prof. A. RADOUANI</p>
                         
-                        <div className="flex gap-4 mb-10 bg-white p-3 rounded-2xl shadow-sm border">
-                            <button onClick={() => setModule('word')} className={`px-8 py-3 rounded-xl font-bold transition-all ${module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>WORD</button>
-                            <button onClick={() => setModule('excel')} className={`px-8 py-3 rounded-xl font-bold transition-all ${module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>EXCEL</button>
+                        <div className="bg-white p-3 rounded-3xl shadow-sm mb-10 flex gap-4 border">
+                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100'}`}>WORD</button>
+                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-100'}`}>EXCEL</button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-                            <button onClick={() => setView('teacher')} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-blue-600 hover:translate-y-[-5px] transition-all">
-                                <div className="text-5xl mb-4">💻</div>
-                                <div className="font-black text-xl text-slate-800">DASHBOARD</div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
+                            <button onClick={() => setView('teacher')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-blue-600 hover:translate-y-[-5px] transition-all">
+                                <div className="text-6xl mb-4">💻</div>
+                                <div className="font-black text-2xl uppercase">Dashboard</div>
                             </button>
-                            <button onClick={() => { alert("Le scan nécessite Firebase. Utilisez le Dashboard pour l'instant."); }} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-green-500 hover:translate-y-[-5px] transition-all">
-                                <div className="text-5xl mb-4">📸</div>
-                                <div className="font-black text-xl text-slate-800">SCANNER</div>
+                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[4rem] shadow-xl border-b-[12px] border-green-500 hover:translate-y-[-5px] transition-all">
+                                <div className="text-6xl mb-4">📸</div>
+                                <div className="font-black text-2xl uppercase">Scanner</div>
                             </button>
-                            <button onClick={() => setView('print')} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-purple-500 hover:translate-y-[-5px] transition-all">
-                                <div className="text-5xl mb-4">🖨️</div>
-                                <div className="font-black text-xl text-slate-800">CARTES</div>
+                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[4rem] shadow-xl border-b-[12px] border-purple-500 hover:translate-y-[-5px] transition-all">
+                                <div className="text-6xl mb-4">🖨️</div>
+                                <div className="font-black text-2xl uppercase">Cartes</div>
                             </button>
                         </div>
                     </div>
                 );
             }
 
-            // Vue Dashboard
             if (view === 'teacher') {
-                const questions = QUESTION_BANKS[module];
-                const q = questions[currentQ];
+                const questions = QUESTIONS[session.module];
+                const q = questions[session.currentQ];
 
                 return (
-                    <div className="min-h-screen flex flex-col bg-slate-100">
-                        <div className="bg-white p-4 flex justify-between items-center shadow-sm border-b">
-                            <button onClick={() => setView('menu')} className="font-bold text-slate-400 hover:text-slate-900">← QUITTER</button>
-                            <div className="font-black uppercase text-slate-800">{module} Session</div>
-                            <button onClick={resetQuiz} className="text-red-500 font-bold">RESET</button>
-                        </div>
+                    <div className="min-h-screen flex flex-col bg-slate-50">
+                        <header className="bg-white p-4 shadow-sm flex justify-between items-center border-b sticky top-0 z-20">
+                            <button onClick={() => setView('menu')} className="font-black text-slate-400">← MENU</button>
+                            <div className="font-black uppercase tracking-widest">{session.module} LIVE 1APIC</div>
+                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold">RESET</button>
+                        </header>
 
-                        <div className="p-6 flex flex-col md:flex-row gap-6 justify-between items-center bg-white shadow-sm sticky top-0 z-10">
+                        <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
                             <div className="flex items-center gap-4">
-                                <button onClick={() => {setCurrentQ(Math.max(0, currentQ - 1)); setShowAnswers(false);}} className="bg-slate-100 p-4 rounded-2xl font-bold">◀</button>
-                                <div className="text-center min-w-[100px]">
-                                    <span className="block text-[10px] font-black text-slate-400">QUESTION</span>
-                                    <span className="text-3xl font-black">{currentQ + 1} / {questions.length}</span>
+                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all border shadow-sm">◀</button>
+                                <div className="text-center bg-zinc-50 px-8 py-2 rounded-2xl border">
+                                    <span className="block text-[10px] font-black text-slate-400">Question</span>
+                                    <span className="text-4xl font-black">{session.currentQ + 1} / {questions.length}</span>
                                 </div>
-                                <button onClick={() => {setCurrentQ(Math.min(questions.length - 1, currentQ + 1)); setShowAnswers(false);}} className="bg-slate-100 p-4 rounded-2xl font-bold">▶</button>
+                                <button onClick={() => updateCloud({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all border shadow-sm">▶</button>
                             </div>
-                            <button onClick={() => setShowAnswers(!showAnswers)} className={`px-12 py-4 rounded-full font-black text-xl shadow-lg transition-all ${showAnswers ? 'bg-slate-800 text-white' : 'bg-amber-500 text-white'}`}>
-                                {showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
+                            <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-16 py-5 rounded-full font-black text-2xl shadow-2xl transition-all active:scale-95 ${session.showAnswers ? 'bg-slate-900 text-white' : 'bg-amber-500 text-white shadow-amber-200'}`}>
+                                {session.showAnswers ? "REFAIRE LE SCAN" : "VOIR LA RÉPONSE"}
                             </button>
                         </div>
 
-                        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-                            <div className="lg:col-span-3 space-y-6">
-                                <div className="bg-white p-12 rounded-[2.5rem] shadow-xl border-b-8 border-slate-200">
-                                    <h3 className="text-4xl md:text-5xl font-black text-slate-800">{q.q}</h3>
+                        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-8 overflow-hidden">
+                            <div className="lg:col-span-3 flex flex-col gap-6 overflow-y-auto">
+                                <div className="bg-white p-10 rounded-[3rem] shadow-xl border-b-[16px] border-zinc-200">
+                                    <h3 className="text-3xl md:text-5xl font-black text-zinc-900 leading-tight text-center">{q.q}</h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {q.a.map((opt, i) => (
-                                        <div key={i} className={`p-6 rounded-3xl border-4 flex items-center gap-6 text-2xl font-black transition-all ${showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-white shadow-sm'}`}>
-                                            <span className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center">{ "ABCD"[i] }</span>
-                                            {opt}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {q.a.map((ans, i) => (
+                                        <div key={i} className={`p-8 rounded-[2rem] border-4 flex items-center gap-8 transition-all duration-700 ${session.showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-800 scale-[1.02] shadow-xl' : 'bg-white border-white shadow-md'}`}>
+                                            <span className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-black ${session.showAnswers && i === q.c ? 'bg-white text-green-600 animate-bounce' : 'bg-black text-white'}`}>{"ABCD"[i]}</span>
+                                            <span className="text-2xl md:text-3xl font-black">{ans}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-[2.5rem] shadow-xl p-6 overflow-y-auto">
-                                <h4 className="font-black text-xl mb-4 border-b pb-2 italic">RÉSULTATS LIVE</h4>
-                                <p className="text-xs text-slate-400 mb-4 uppercase">Simulé (Hébergement requis pour Live)</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {DEFAULT_STUDENTS.map(s => (
-                                        <div key={s.id} className="p-3 rounded-xl bg-slate-50 border text-[10px] font-bold text-slate-300">
-                                            #{s.id} {s.name.split(' ')[1]}
-                                        </div>
-                                    ))}
+                            <div className="bg-white rounded-[3rem] shadow-2xl p-6 flex flex-col border-t-[12px] border-zinc-100 overflow-hidden">
+                                <h4 className="text-2xl font-black text-zinc-900 mb-6">VOTES ({Object.keys(responses).length})</h4>
+                                <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-2 pb-6">
+                                    {STUDENTS.map(s => {
+                                        const res = responses[s.id];
+                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md') : 'bg-blue-600 text-white animate-pulse shadow-lg') : 'bg-zinc-50 border-zinc-100 text-zinc-300';
+                                        return (
+                                            <div key={s.id} className={`p-4 rounded-3xl border-2 flex flex-col items-center justify-center transition-all duration-500 ${color}`}>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[8px] font-black opacity-50">#{s.id}</span>
+                                                    {res && <span className="px-2 py-0.5 rounded-lg font-black text-[10px] bg-white/20">{"ABCD"[res.answerIdx]}</span>}
+                                                </div>
+                                                <span className="font-black text-[10px] uppercase truncate w-full text-center leading-none">{s.name.split(' ')[1]}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -158,25 +391,27 @@
                 );
             }
 
-            // Vue Impression
+            if (view === 'scanner') {
+                return <ScannerView submitVote={submitVote} session={session} setView={setView} />;
+            }
+
             if (view === 'print') {
                 return (
-                    <div className="p-8 bg-white min-h-screen">
-                        <div className="no-print flex justify-between items-center mb-10 bg-slate-50 p-6 rounded-3xl border">
-                            <button onClick={() => setView('menu')} className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-bold">← RETOUR</button>
-                            <h2 className="text-2xl font-black">IMPRESSION DES CARTES (4 PAR ÉLÈVE)</h2>
-                            <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg">IMPRIMER</button>
+                    <div className="bg-white min-h-screen p-4">
+                        <div className="no-print mb-10 p-6 bg-slate-50 rounded-[2rem] border flex justify-between items-center">
+                            <button onClick={() => setView('menu')} className="font-black text-slate-600 bg-white px-6 py-2 rounded-xl shadow-sm border">← RETOUR</button>
+                            <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg hover:bg-blue-700 transition-all">IMPRIMER PDF</button>
                         </div>
-                        <div className="flex flex-col gap-10 items-center">
-                            {DEFAULT_STUDENTS.map(s => (
-                                <div key={s.id} className="grid grid-cols-2 gap-4 w-full h-[28cm] max-w-[21cm] page-break p-4">
+                        <div className="max-w-[21cm] mx-auto space-y-10">
+                            {STUDENTS.map(s => (
+                                <div key={s.id} className="grid grid-cols-2 gap-4 page-break py-4">
                                     {["A", "B", "C", "D"].map(L => (
-                                        <div key={L} className="border-8 border-black p-8 flex flex-col items-center justify-between h-[13.2cm] rounded-[3rem] bg-white relative">
-                                            <div className="text-9xl font-black">{L}</div>
-                                            <LocalQRCode data={`${s.id}-${L}`} size={180} />
-                                            <div className="text-center font-black uppercase text-xl">
-                                                <div>{s.name}</div>
-                                                <div className="text-xs text-slate-400 tracking-widest mt-1">ID: {s.id} | QUIZ 1APIC</div>
+                                        <div key={L} className="border-[8px] border-black rounded-[3rem] p-10 flex flex-col items-center justify-between h-[13.5cm] bg-white">
+                                            <div className="text-9xl font-black leading-none">{L}</div>
+                                            <LocalQR text={`${s.id}-${L}`} />
+                                            <div className="text-center w-full border-t-4 border-black pt-4">
+                                                <div className="font-black text-2xl uppercase tracking-tighter">{s.name}</div>
+                                                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {s.id} | MASTER QUIZ</div>
                                             </div>
                                         </div>
                                     ))}
