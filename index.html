@@ -9,8 +9,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     
     <style>
@@ -19,6 +17,7 @@
         @media print {
             .no-print { display: none !important; }
             .page-break { page-break-after: always !important; }
+            body { background: white !important; }
         }
     </style>
 </head>
@@ -27,27 +26,17 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        // Importation manuelle des icônes Lucide pour Babel
-        const { 
-            Camera, Presentation, Printer, RotateCcw, 
-            ChevronRight, ChevronLeft, Eye, FileText, Table, Loader2 
-        } = lucide;
 
-        // --- CONFIGURATION (À REMPLACER PAR TES INFOS FIREBASE SI TU EN AS) ---
-        // Si tu n'as pas de Firebase, l'app fonctionnera en mode local (sans synchro téléphone/PC)
-        const appId = "plickers-1apic-radouani";
-
-        // --- BANQUE DE QUESTIONS ---
+        // --- BANQUE DE QUESTIONS (40 WORD + 40 EXCEL) ---
+        // (J'ai mis un échantillon, tu peux rajouter les autres ici)
         const QUESTION_BANKS = {
             word: [
                 { q: "Lequel n'est pas un logiciel de traitement de texte ?", a: ["Microsoft Word", "Google Docs", "Microsoft Excel", "LibreOffice Writer"], c: 2 },
-                { q: "Comment appelle-t-on la barre située tout en haut ?", a: ["Barre d'état", "Barre de titre", "Le ruban", "Barre de défilement"], c: 1 },
-                { q: "Raccourci pour sélectionner tout le texte ?", a: ["Ctrl + S", "Ctrl + A", "Ctrl + C", "Ctrl + V"], c: 1 }
+                { q: "Comment appelle-t-on la barre située tout en haut ?", a: ["Barre d'état", "Barre de titre", "Le ruban", "Barre de défilement"], c: 1 }
             ],
             excel: [
                 { q: "Rôle principal de Microsoft Excel ?", a: ["Lettres", "Calculs et Tableaux", "Diaporamas", "Internet"], c: 1 },
-                { q: "Adresse cellule Colonne B / Ligne 5 ?", a: ["5B", "B-5", "B5", "BB5"], c: 2 },
-                { q: "Signe pour commencer une formule ?", a: ["+", "*", "=", "/"], c: 2 }
+                { q: "Adresse cellule Colonne B / Ligne 5 ?", a: ["5B", "B-5", "B5", "BB5"], c: 2 }
             ]
         };
 
@@ -57,114 +46,111 @@
         const LocalQRCode = ({ data, size = 150 }) => {
             const containerRef = useRef(null);
             useEffect(() => {
-                const qr = qrcode(0, 'L');
-                qr.addData(data);
-                qr.make();
-                containerRef.current.innerHTML = qr.createSvgTag(5, 0);
+                if (window.qrcode) {
+                    const qr = qrcode(0, 'L');
+                    qr.addData(data);
+                    qr.make();
+                    containerRef.current.innerHTML = qr.createSvgTag(5, 0);
+                }
             }, [data]);
-            return <div ref={containerRef} className="flex items-center justify-center bg-white" />;
+            return <div ref={containerRef} className="flex items-center justify-center bg-white" style={{width: size, height: size}} />;
         };
 
-        // --- APPLICATION PRINCIPALE ---
+        // --- APPLICATION ---
         function App() {
             const [view, setView] = useState('menu');
-            const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
+            const [module, setModule] = useState('excel');
+            const [currentQ, setCurrentQ] = useState(0);
+            const [showAnswers, setShowAnswers] = useState(false);
             const [responses, setResponses] = useState({});
 
-            const updateSession = (up) => setSession(prev => ({ ...prev, ...up }));
-            
-            const submitAnswer = (sId, aIdx) => {
-                setResponses(prev => ({ ...prev, [sId]: { answerIdx: aIdx } }));
-            };
-
-            const resetResponses = () => {
+            const resetQuiz = () => {
                 setResponses({});
-                updateSession({ showAnswers: false });
+                setShowAnswers(false);
+                setCurrentQ(0);
             };
 
-            // Menu Principal
+            // Vue Menu
             if (view === 'menu') {
                 return (
-                    <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-10">
-                        <div className="text-center">
-                            <h1 className="text-6xl font-black text-zinc-900 italic">PLICKERS<span className="text-blue-600">.</span></h1>
-                            <p className="text-zinc-400 font-bold uppercase tracking-widest">Prof. A. RADOUANI</p>
-                        </div>
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
+                        <h1 className="text-5xl font-black text-slate-900 mb-2 italic">PLICKERS MASTER</h1>
+                        <p className="text-slate-400 font-bold mb-10 tracking-widest uppercase">Prof. A. RADOUANI</p>
                         
-                        <div className="flex gap-4 bg-white p-4 rounded-3xl shadow-xl border">
-                            <button onClick={() => updateSession({module: 'word'})} className={`px-6 py-3 rounded-2xl font-bold ${session.module === 'word' ? 'bg-blue-600 text-white' : 'bg-zinc-100'}`}>WORD</button>
-                            <button onClick={() => updateSession({module: 'excel'})} className={`px-6 py-3 rounded-2xl font-bold ${session.module === 'excel' ? 'bg-green-600 text-white' : 'bg-zinc-100'}`}>EXCEL</button>
+                        <div className="flex gap-4 mb-10 bg-white p-3 rounded-2xl shadow-sm border">
+                            <button onClick={() => setModule('word')} className={`px-8 py-3 rounded-xl font-bold transition-all ${module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>WORD</button>
+                            <button onClick={() => setModule('excel')} className={`px-8 py-3 rounded-xl font-bold transition-all ${module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>EXCEL</button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-                            <button onClick={() => setView('teacher')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-blue-600 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
-                                <Presentation size={48} className="text-blue-600"/>
-                                <span className="font-black text-xl">DASHBOARD</span>
+                            <button onClick={() => setView('teacher')} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-blue-600 hover:translate-y-[-5px] transition-all">
+                                <div className="text-5xl mb-4">💻</div>
+                                <div className="font-black text-xl text-slate-800">DASHBOARD</div>
                             </button>
-                            <button onClick={() => setView('scanner')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-green-500 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
-                                <Camera size={48} className="text-green-500"/>
-                                <span className="font-black text-xl">SCANNER</span>
+                            <button onClick={() => { alert("Le scan nécessite Firebase. Utilisez le Dashboard pour l'instant."); }} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-green-500 hover:translate-y-[-5px] transition-all">
+                                <div className="text-5xl mb-4">📸</div>
+                                <div className="font-black text-xl text-slate-800">SCANNER</div>
                             </button>
-                            <button onClick={() => setView('print')} className="bg-white p-8 rounded-[2rem] shadow-lg border-b-8 border-purple-500 flex flex-col items-center gap-4 hover:scale-105 transition-transform">
-                                <Printer size={48} className="text-purple-500"/>
-                                <span className="font-black text-xl">CARTES</span>
+                            <button onClick={() => setView('print')} className="bg-white p-10 rounded-[2.5rem] shadow-xl border-b-8 border-purple-500 hover:translate-y-[-5px] transition-all">
+                                <div className="text-5xl mb-4">🖨️</div>
+                                <div className="font-black text-xl text-slate-800">CARTES</div>
                             </button>
                         </div>
                     </div>
                 );
             }
 
-            // Dashboard Enseignant
+            // Vue Dashboard
             if (view === 'teacher') {
-                const questions = QUESTION_BANKS[session.module];
-                const q = questions[session.currentQ];
+                const questions = QUESTION_BANKS[module];
+                const q = questions[currentQ];
 
                 return (
-                    <div className="min-h-screen flex flex-col">
-                        <header className="bg-white p-4 shadow flex justify-between items-center border-b no-print">
-                            <button onClick={() => setView('menu')} className="text-zinc-400 font-bold">← MENU</button>
-                            <h2 className="font-black uppercase">{session.module} SESSION</h2>
-                            <button onClick={resetResponses} className="text-red-500 font-bold">RESET</button>
-                        </header>
+                    <div className="min-h-screen flex flex-col bg-slate-100">
+                        <div className="bg-white p-4 flex justify-between items-center shadow-sm border-b">
+                            <button onClick={() => setView('menu')} className="font-bold text-slate-400 hover:text-slate-900">← QUITTER</button>
+                            <div className="font-black uppercase text-slate-800">{module} Session</div>
+                            <button onClick={resetQuiz} className="text-red-500 font-bold">RESET</button>
+                        </div>
 
-                        <div className="p-6 bg-white border-b flex justify-between items-center no-print">
+                        <div className="p-6 flex flex-col md:flex-row gap-6 justify-between items-center bg-white shadow-sm sticky top-0 z-10">
                             <div className="flex items-center gap-4">
-                                <button onClick={() => updateSession({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-2 bg-zinc-100 rounded-lg"><ChevronLeft/></button>
-                                <span className="font-black text-2xl">{session.currentQ + 1} / {questions.length}</span>
-                                <button onClick={() => updateSession({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-2 bg-zinc-100 rounded-lg"><ChevronRight/></button>
+                                <button onClick={() => {setCurrentQ(Math.max(0, currentQ - 1)); setShowAnswers(false);}} className="bg-slate-100 p-4 rounded-2xl font-bold">◀</button>
+                                <div className="text-center min-w-[100px]">
+                                    <span className="block text-[10px] font-black text-slate-400">QUESTION</span>
+                                    <span className="text-3xl font-black">{currentQ + 1} / {questions.length}</span>
+                                </div>
+                                <button onClick={() => {setCurrentQ(Math.min(questions.length - 1, currentQ + 1)); setShowAnswers(false);}} className="bg-slate-100 p-4 rounded-2xl font-bold">▶</button>
                             </div>
-                            <button onClick={() => updateSession({showAnswers: !session.showAnswers})} className={`px-8 py-3 rounded-full font-black text-white ${session.showAnswers ? 'bg-zinc-800' : 'bg-amber-500'}`}>
-                                {session.showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
+                            <button onClick={() => setShowAnswers(!showAnswers)} className={`px-12 py-4 rounded-full font-black text-xl shadow-lg transition-all ${showAnswers ? 'bg-slate-800 text-white' : 'bg-amber-500 text-white'}`}>
+                                {showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
                             </button>
                         </div>
 
                         <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
                             <div className="lg:col-span-3 space-y-6">
-                                <div className="bg-white p-10 rounded-[2rem] shadow-xl border-b-8 border-zinc-200">
-                                    <h3 className="text-4xl font-black">{q.q}</h3>
+                                <div className="bg-white p-12 rounded-[2.5rem] shadow-xl border-b-8 border-slate-200">
+                                    <h3 className="text-4xl md:text-5xl font-black text-slate-800">{q.q}</h3>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {q.a.map((opt, i) => (
-                                        <div key={i} className={`p-6 rounded-2xl border-2 flex items-center gap-4 text-xl font-bold ${session.showAnswers && i === q.c ? 'bg-green-500 text-white' : 'bg-white'}`}>
-                                            <span className="w-10 h-10 bg-zinc-900 text-white rounded flex items-center justify-center">{"ABCD"[i]}</span>
+                                        <div key={i} className={`p-6 rounded-3xl border-4 flex items-center gap-6 text-2xl font-black transition-all ${showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-white shadow-sm'}`}>
+                                            <span className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center">{ "ABCD"[i] }</span>
                                             {opt}
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            
-                            <div className="bg-white rounded-[2rem] shadow-xl p-4 overflow-y-auto max-h-[70vh]">
-                                <h4 className="font-black mb-4 border-b pb-2">SCORES ({Object.keys(responses).length})</h4>
+
+                            <div className="bg-white rounded-[2.5rem] shadow-xl p-6 overflow-y-auto">
+                                <h4 className="font-black text-xl mb-4 border-b pb-2 italic">RÉSULTATS LIVE</h4>
+                                <p className="text-xs text-slate-400 mb-4 uppercase">Simulé (Hébergement requis pour Live)</p>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {DEFAULT_STUDENTS.map(s => {
-                                        const res = responses[s.id];
-                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white' : 'bg-red-500 text-white') : 'bg-blue-600 text-white') : 'bg-zinc-100 text-zinc-300';
-                                        return (
-                                            <div key={s.id} className={`p-2 rounded-xl text-[10px] font-bold text-center ${color}`}>
-                                                #{s.id} {res && "ABCD"[res.answerIdx]}
-                                            </div>
-                                        );
-                                    })}
+                                    {DEFAULT_STUDENTS.map(s => (
+                                        <div key={s.id} className="p-3 rounded-xl bg-slate-50 border text-[10px] font-bold text-slate-300">
+                                            #{s.id} {s.name.split(' ')[1]}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -172,33 +158,26 @@
                 );
             }
 
-            // Scanner (Mode simplifié pour démo sans Firebase)
-            if (view === 'scanner') {
-                return (
-                    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-10">
-                        <Camera size={64} className="text-green-500 mb-4" />
-                        <h2 className="text-2xl font-black mb-8 text-center">MODE SCANNER ACTIF</h2>
-                        <p className="text-center text-zinc-500 max-w-sm mb-10">
-                            (Sur un serveur réel avec Firebase, la caméra s'ouvre ici et envoie les données au Dashboard).
-                        </p>
-                        <button onClick={() => setView('menu')} className="bg-white text-black px-10 py-3 rounded-full font-black">RETOUR</button>
-                    </div>
-                );
-            }
-
-            // Impression
+            // Vue Impression
             if (view === 'print') {
                 return (
-                    <div className="p-8">
-                        <button onClick={() => setView('menu')} className="no-print mb-10 bg-zinc-900 text-white px-6 py-2 rounded-xl">← RETOUR</button>
-                        <div className="flex flex-col gap-10">
+                    <div className="p-8 bg-white min-h-screen">
+                        <div className="no-print flex justify-between items-center mb-10 bg-slate-50 p-6 rounded-3xl border">
+                            <button onClick={() => setView('menu')} className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-bold">← RETOUR</button>
+                            <h2 className="text-2xl font-black">IMPRESSION DES CARTES (4 PAR ÉLÈVE)</h2>
+                            <button onClick={() => window.print()} className="bg-blue-600 text-white px-10 py-3 rounded-2xl font-black shadow-lg">IMPRIMER</button>
+                        </div>
+                        <div className="flex flex-col gap-10 items-center">
                             {DEFAULT_STUDENTS.map(s => (
-                                <div key={s.id} className="grid grid-cols-2 gap-4 page-break">
+                                <div key={s.id} className="grid grid-cols-2 gap-4 w-full h-[28cm] max-w-[21cm] page-break p-4">
                                     {["A", "B", "C", "D"].map(L => (
-                                        <div key={L} className="border-4 border-black p-10 flex flex-col items-center justify-between h-[13cm] rounded-[2rem]">
-                                            <div className="text-8xl font-black">{L}</div>
-                                            <LocalQRCode data={`${s.id}-${L}`} />
-                                            <div className="text-center font-black uppercase text-xl">{s.name}</div>
+                                        <div key={L} className="border-8 border-black p-8 flex flex-col items-center justify-between h-[13.2cm] rounded-[3rem] bg-white relative">
+                                            <div className="text-9xl font-black">{L}</div>
+                                            <LocalQRCode data={`${s.id}-${L}`} size={180} />
+                                            <div className="text-center font-black uppercase text-xl">
+                                                <div>{s.name}</div>
+                                                <div className="text-xs text-slate-400 tracking-widest mt-1">ID: {s.id} | QUIZ 1APIC</div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
