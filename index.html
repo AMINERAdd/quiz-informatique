@@ -30,13 +30,15 @@
             .page-break { page-break-after: always !important; }
             body { background: white !important; }
         }
+        /* Fix pour le scanner */
+        #reader video { border-radius: 1.5rem; object-fit: cover; }
     </style>
 </head>
 <body class="bg-slate-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         // ==========================================
         // 1. CONFIGURATION FIREBASE
@@ -158,13 +160,16 @@
             return <div ref={divRef} className="flex justify-center bg-white p-2"></div>;
         };
 
-        // --- SOUS-VUES POUR ÉVITER L'ERREUR DE HOOKS ---
-
+        // --- VUE SCANNER ---
         const ScannerView = ({ submitVote, session, setView }) => {
             const [last, setLast] = useState(null);
+            const scannerRef = useRef(null);
+
             useEffect(() => {
                 if (!window.Html5Qrcode) return;
                 const scanner = new Html5Qrcode("reader");
+                scannerRef.current = scanner;
+                
                 scanner.start(
                     { facingMode: "environment" },
                     { fps: 15, qrbox: { width: 250, height: 250 } },
@@ -180,8 +185,13 @@
                             }
                         }
                     }
-                ).catch(console.error);
-                return () => { if (scanner.isScanning) scanner.stop().catch(() => {}); };
+                ).catch(err => console.error("Erreur scanner:", err));
+
+                return () => { 
+                    if (scannerRef.current && scannerRef.current.isScanning) {
+                        scannerRef.current.stop().catch(() => {}); 
+                    }
+                };
             }, []);
 
             return (
@@ -193,7 +203,7 @@
                     </header>
                     <div className="flex-1 relative flex flex-col items-center justify-center">
                         <div id="reader" className="w-full h-full max-w-lg"></div>
-                        {last && <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-green-500 px-8 py-4 rounded-full font-black text-2xl shadow-2xl animate-bounce z-50">{last}</div>}
+                        {last && <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-green-500 text-white px-8 py-4 rounded-full font-black text-2xl shadow-2xl animate-bounce z-50">{last}</div>}
                     </div>
                 </div>
             );
@@ -216,6 +226,14 @@
                         setLoading(false);
                         return;
                     }
+
+                    // Vérifier si la config est valide pour éviter l'erreur de clé API
+                    if (!firebaseConfig || !firebaseConfig.apiKey) {
+                        console.warn("Configuration Firebase manquante ou incomplète. Passage en mode démo.");
+                        setLoading(false);
+                        return;
+                    }
+
                     const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } = window.FirebaseSDK;
                     
                     try {
@@ -223,7 +241,7 @@
                         const auth = getAuth(app);
                         const firestore = getFirestore(app);
                         
-                        // Auth d'abord
+                        // Authentification
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                             await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
@@ -235,6 +253,8 @@
                                 setUser(u);
                                 setDb(firestore);
                                 setLoading(false);
+                            } else {
+                                setLoading(false);
                             }
                         });
                     } catch (e) {
@@ -245,14 +265,14 @@
                 initFirebase();
             }, []);
 
-            // Sync Temps Réel (Règle 1: Chemins stricts)
+            // Sync Temps Réel
             useEffect(() => {
                 if (!db || !user) return;
                 const { doc, onSnapshot, collection } = window.FirebaseSDK;
 
                 const unsubSess = onSnapshot(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session'), 
                     (snap) => { if (snap.exists()) setSession(snap.data()); },
-                    (err) => console.error(err)
+                    (err) => console.error("Erreur Sync Session:", err)
                 );
 
                 const unsubResp = onSnapshot(collection(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses'), 
@@ -261,27 +281,37 @@
                         snap.forEach(doc => d[doc.id] = doc.data());
                         setResponses(d);
                     },
-                    (err) => console.error(err)
+                    (err) => console.error("Erreur Sync Réponses:", err)
                 );
 
                 return () => { unsubSess(); unsubResp(); };
             }, [db, user]);
 
             const updateCloud = async (up) => {
-                if (!db || !user) return;
+                if (!db || !user) {
+                    setSession(prev => ({ ...prev, ...up })); // Mode local
+                    return;
+                }
                 const { doc, updateDoc, setDoc } = window.FirebaseSDK;
                 const ref = doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'config', 'session');
                 try { await updateDoc(ref, up); } catch(e) { await setDoc(ref, { ...session, ...up }); }
             };
 
             const submitVote = async (sId, aIdx) => {
-                if (!db || !user) return;
+                if (!db || !user) {
+                    setResponses(prev => ({ ...prev, [sId]: { answerIdx: aIdx, t: Date.now() } })); // Mode local
+                    return;
+                }
                 const { doc, setDoc } = window.FirebaseSDK;
                 await setDoc(doc(db, 'artifacts', uniqueAppId, 'public', 'data', 'responses', sId), { answerIdx: aIdx, t: Date.now() });
             };
 
             const resetVotes = async () => {
-                if (!db || !user) return;
+                if (!db || !user) {
+                    setResponses({});
+                    setSession(prev => ({ ...prev, showAnswers: false }));
+                    return;
+                }
                 const { doc, deleteDoc } = window.FirebaseSDK;
                 await updateCloud({ showAnswers: false });
                 for (const id of Object.keys(responses)) {
@@ -292,11 +322,11 @@
             if (loading) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
                     <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="font-bold uppercase tracking-widest animate-pulse">Chargement...</p>
+                    <p className="font-bold uppercase tracking-widest animate-pulse">Initialisation...</p>
                 </div>
             );
 
-            // --- VUES CONDITIONNELLES (SANS HOOKS À L'INTÉRIEUR) ---
+            // --- RENDU DES VUES ---
 
             if (view === 'menu') {
                 return (
@@ -305,8 +335,8 @@
                         <p className="text-slate-400 font-bold mb-10 tracking-[0.3em] uppercase">Prof. A. RADOUANI</p>
                         
                         <div className="bg-white p-3 rounded-3xl shadow-sm mb-10 flex gap-4 border">
-                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100'}`}>WORD</button>
-                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-slate-100'}`}>EXCEL</button>
+                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100'}`}>WORD</button>
+                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'bg-gray-100'}`}>EXCEL</button>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
@@ -314,15 +344,16 @@
                                 <div className="text-6xl mb-4">💻</div>
                                 <div className="font-black text-2xl uppercase">Dashboard</div>
                             </button>
-                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[4rem] shadow-xl border-b-[12px] border-green-500 hover:translate-y-[-5px] transition-all">
+                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-green-500 hover:translate-y-[-5px] transition-all">
                                 <div className="text-6xl mb-4">📸</div>
                                 <div className="font-black text-2xl uppercase">Scanner</div>
                             </button>
-                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[4rem] shadow-xl border-b-[12px] border-purple-500 hover:translate-y-[-5px] transition-all">
+                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[3rem] shadow-xl border-b-[12px] border-purple-500 hover:translate-y-[-5px] transition-all">
                                 <div className="text-6xl mb-4">🖨️</div>
                                 <div className="font-black text-2xl uppercase">Cartes</div>
                             </button>
                         </div>
+                        {!db && <p className="mt-8 text-amber-600 font-bold bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">Mode Local Actif (Pas de clé API)</p>}
                     </div>
                 );
             }
@@ -341,15 +372,15 @@
 
                         <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
                             <div className="flex items-center gap-4">
-                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all border shadow-sm">◀</button>
+                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl hover:bg-zinc-200 transition-all border shadow-sm">◀</button>
                                 <div className="text-center bg-zinc-50 px-8 py-2 rounded-2xl border">
                                     <span className="block text-[10px] font-black text-slate-400">Question</span>
                                     <span className="text-4xl font-black">{session.currentQ + 1} / {questions.length}</span>
                                 </div>
-                                <button onClick={() => updateCloud({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all border shadow-sm">▶</button>
+                                <button onClick={() => updateCloud({currentQ: Math.min(questions.length - 1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl hover:bg-zinc-200 transition-all border shadow-sm">▶</button>
                             </div>
                             <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-16 py-5 rounded-full font-black text-2xl shadow-2xl transition-all active:scale-95 ${session.showAnswers ? 'bg-slate-900 text-white' : 'bg-amber-500 text-white shadow-amber-200'}`}>
-                                {session.showAnswers ? "REFAIRE LE SCAN" : "VOIR LA RÉPONSE"}
+                                {session.showAnswers ? "REFAIRE LE SCAN" : "AFFICHER LA RÉPONSE"}
                             </button>
                         </div>
 
@@ -373,7 +404,7 @@
                                 <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-2 pb-6">
                                     {STUDENTS.map(s => {
                                         const res = responses[s.id];
-                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md') : 'bg-blue-600 text-white animate-pulse shadow-lg') : 'bg-zinc-50 border-zinc-100 text-zinc-300';
+                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white shadow-md' : 'bg-red-50 text-white shadow-md') : 'bg-blue-600 text-white animate-pulse shadow-lg') : 'bg-zinc-50 border-zinc-100 text-zinc-300';
                                         return (
                                             <div key={s.id} className={`p-4 rounded-3xl border-2 flex flex-col items-center justify-center transition-all duration-500 ${color}`}>
                                                 <div className="flex items-center gap-2 mb-1">
