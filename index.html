@@ -3,23 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plickers 1APIC - Prof A. RADOUANI</title>
+    <title>PLICKERS LIVE | Prof. A. RADOUANI</title>
     
+    <!-- Scripts de base -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Bibliothèques Utilitaires -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
+    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
-        body { font-family: 'Poppins', sans-serif; }
+        body { font-family: 'Poppins', sans-serif; overflow-x: hidden; }
         @media print {
             .no-print { display: none !important; }
             .page-break { page-break-after: always !important; }
@@ -28,12 +31,15 @@
         #reader video { border-radius: 1.5rem; object-fit: cover; width: 100% !important; }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // ==========================================
+        // 1. CONFIGURATION FIREBASE
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyAF7aaeksLKsjCBLhDzTDpJjfv8fapq8WM",
             authDomain: "excel-e3987.firebaseapp.com",
@@ -44,8 +50,11 @@
             measurementId: "G-Z8B1GNY2QK"
         };
         
-        const uniqueAppId = "plickers-1apic-radouani-live";
+        const appId = "plickers-1apic-radouani-live";
 
+        // ==========================================
+        // 2. BANQUES DE QUESTIONS (WORD, EXCEL, GOOGLE)
+        // ==========================================
         const QUESTIONS = {
             word: [
                 { q: "Lequel n'est pas un logiciel de traitement de texte ?", a: ["Microsoft Word", "Google Docs", "Microsoft Excel", "LibreOffice Writer"], c: 2 },
@@ -130,11 +139,54 @@
                 { q: "Le signe '/' fait :", a: ["Plus", "Divisé", "Fois", "Moins"], c: 1 },
                 { q: "Changer la hauteur d'une :", a: ["Colonne", "Ligne", "Cellule", "Feuille"], c: 1 },
                 { q: "Graphique en bâtons s'appelle :", a: ["Secteur", "Histogramme", "Courbe", "Radar"], c: 1 }
+            ],
+            google: [
+                { q: "Quel est le moteur de recherche le plus utilisé au monde ?", a: ["Bing", "Yahoo", "Google", "DuckDuckGo"], c: 2 },
+                { q: "Quel service Google permet de stocker des fichiers en ligne ?", a: ["Gmail", "Google Drive", "Google Maps", "YouTube"], c: 1 },
+                { q: "Comment s'appelle la boîte mail de Google ?", a: ["Outlook", "Yahoo Mail", "Gmail", "iCloud"], c: 2 },
+                { q: "Pour faire une recherche précise, on met les mots entre :", a: ["Parenthèses ()", "Guillemets \" \"", "Crochets [ ]", "Étoiles * *"], c: 1 },
+                { q: "Google Drive offre gratuitement un espace de :", a: ["5 Go", "10 Go", "15 Go", "100 Go"], c: 2 },
+                { q: "Lequel est un navigateur web développé par Google ?", a: ["Firefox", "Safari", "Edge", "Chrome"], c: 3 },
+                { q: "Dans Gmail, que signifie 'CC' ?", a: ["Copie Conforme", "Compte Caché", "Code Courrier", "Contact Créé"], c: 0 },
+                { q: "Où vont les e-mails supprimés dans Gmail ?", a: ["Boîte de réception", "Spam", "Corbeille", "Brouillons"], c: 2 },
+                { q: "Google Meet sert principalement à :", a: ["Écrire du texte", "Faire des calculs", "Faire des visioconférences", "Retoucher des photos"], c: 2 },
+                { q: "Quel symbole permet d'exclure un mot d'une recherche Google ?", a: ["+", "-", "*", "@"], c: 1 },
+                { q: "L'application Google pour les feuilles de calcul s'appelle :", a: ["Docs", "Slides", "Sheets", "Forms"], c: 2 },
+                { q: "Pour créer un sondage en ligne, on utilise :", a: ["Google Keep", "Google Forms", "Google News", "Google Play"], c: 1 },
+                { q: "Une adresse Gmail se termine par :", a: ["@google.com", "@gmail.com", "@outlook.fr", "@mail.ma"], c: 1 },
+                { q: "Quel bouton permet de joindre un fichier dans Gmail ?", a: ["Le stylo", "Le trombone", "La loupe", "L'étoile"], c: 1 },
+                { q: "Google Slides est l'équivalent de :", a: ["Word", "Excel", "PowerPoint", "Access"], c: 2 },
+                { q: "Comment s'appelle l'IA de Google lancée récemment ?", a: ["ChatGPT", "Siri", "Gemini", "Alexa"], c: 2 },
+                { q: "Que signifie le dossier 'Spam' ?", a: ["Messages importants", "Courriers indésirables", "Messages envoyés", "Publicités sûres"], c: 1 },
+                { q: "Pour traduire un texte entier, on utilise :", a: ["Google Search", "Google Translate", "Google Lens", "Google Books"], c: 1 },
+                { q: "Quel outil permet de scanner un objet avec l'appareil photo ?", a: ["Google Maps", "Google Lens", "Google Photos", "Google Earth"], c: 1 },
+                { q: "Sur Google Drive, un dossier partagé est marqué par :", a: ["Une étoile", "Une icône de personnage", "Une couleur rouge", "Un cadenas"], c: 1 },
+                { q: "Quelle touche permet de lancer une recherche Google ?", a: ["Espace", "Entrée", "Alt", "Maj"], c: 1 },
+                { q: "Google Maps sert à :", a: ["Calculer", "S'orienter et voir des cartes", "Jouer en ligne", "Acheter des vêtements"], c: 1 },
+                { q: "Dans Drive, 'Mon Drive' contient :", a: ["Les fichiers des autres", "Mes propres fichiers", "Seulement des images", "Les mails"], c: 1 },
+                { q: "L'option 'Brouillon' dans Gmail contient :", a: ["Les mails reçus", "Les mails non terminés", "Les mails supprimés", "Les mails importants"], c: 1 },
+                { q: "Google est à l'origine du système mobile :", a: ["iOS", "Windows Phone", "Android", "Symbian"], c: 2 },
+                { q: "L'icône de Google Drive a la forme d'un :", a: ["Cercle", "Triangle", "Carré", "Nuage"], c: 1 },
+                { q: "Pour ouvrir un nouvel onglet dans Chrome :", a: ["Ctrl + T", "Ctrl + N", "Ctrl + W", "Ctrl + P"], c: 0 },
+                { q: "Un 'Compte Google' permet d'accéder à :", a: ["Un seul service", "Tous les services Google", "Seulement YouTube", "Seulement Maps"], c: 1 },
+                { q: "Dans Google Search, 'Images' sert à chercher :", a: ["Des vidéos", "Des photos et images", "Des sites", "Des actualités"], c: 1 },
+                { q: "YouTube appartient à quelle entreprise ?", a: ["Facebook", "Microsoft", "Google", "Apple"], c: 2 },
+                { q: "La barre de recherche Google s'appelle souvent :", a: ["L'Omnibox", "Le Ruban", "La Cellule", "L'En-tête"], c: 0 },
+                { q: "Pour enregistrer un site favori dans Chrome :", a: ["Une flèche", "Une étoile", "Un point", "Une croix"], c: 1 },
+                { q: "Quel bouton rafraîchit une page web ?", a: ["La maison", "La flèche qui tourne", "La croix", "Le cadenas"], c: 1 },
+                { q: "Un lien 'URL' est :", a: ["Une image", "Une adresse web", "Un mot de passe", "Un virus"], c: 1 },
+                { q: "Le 'Cloud Computing' (Nuage) permet de :", a: ["Faire pleuvoir", "Stocker des données sur internet", "Éteindre le PC", "Vider la batterie"], c: 1 },
+                { q: "Que signifie 'Objet' dans un e-mail ?", a: ["Le prix du mail", "Le titre du message", "La date", "L'adresse"], c: 1 },
+                { q: "Google Scholar est spécialisé dans :", a: ["Les jeux", "Les recherches académiques", "La mode", "Le sport"], c: 1 },
+                { q: "Google Play Store sert à :", a: ["Acheter du pain", "Télécharger des applications", "Regarder l'heure", "Appeler"], c: 1 },
+                { q: "Pour sécuriser un compte Google, on utilise :", a: ["Un simple nom", "La validation en deux étapes", "Rien du tout", "Une image"], c: 1 },
+                { q: "Le bouton 'Déconnexion' sert à :", a: ["Éteindre internet", "Fermer sa session sécurisée", "Supprimer son compte", "Changer de mot de passe"], c: 1 }
             ]
         };
 
         const STUDENTS = Array.from({ length: 30 }, (_, i) => ({ id: (i + 1).toString(), name: `Élève ${i + 1}` }));
 
+        // Components
         const LocalQR = ({ text }) => {
             const divRef = useRef(null);
             useEffect(() => {
@@ -148,51 +200,74 @@
             return <div ref={divRef} className="flex justify-center bg-white p-2"></div>;
         };
 
-        const ScannerComp = ({ onScan, setView }) => {
+        const ScannerView = ({ submitVote, setView }) => {
             const [last, setLast] = useState(null);
             const scannerRef = useRef(null);
-
             useEffect(() => {
-                const start = async () => {
-                    const scanner = new Html5Qrcode("reader");
-                    scannerRef.current = scanner;
-                    try {
-                        await scanner.start(
-                            { facingMode: "environment" },
-                            { fps: 20, qrbox: 250 },
-                            (text) => {
-                                const parts = text.split('-');
-                                if (parts.length === 2) {
-                                    const [sId, char] = parts;
-                                    const idx = "ABCD".indexOf(char);
-                                    if (idx !== -1) {
-                                        onScan(sId, idx);
-                                        setLast(`Élève ${sId} : ${char} ✅`);
-                                        if (navigator.vibrate) navigator.vibrate(50);
-                                    }
-                                }
+                const scanner = new Html5Qrcode("reader");
+                scannerRef.current = scanner;
+                scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 20, qrbox: 250 },
+                    (text) => {
+                        const parts = text.split('-');
+                        if (parts.length === 2) {
+                            const [sId, char] = parts;
+                            const idx = "ABCD".indexOf(char);
+                            if (idx !== -1) {
+                                submitVote(sId, idx);
+                                setLast(`S${sId}:${char} ✅`);
+                                if (navigator.vibrate) navigator.vibrate(50);
                             }
-                        );
-                    } catch (e) { console.error(e); }
-                };
-                start();
+                        }
+                    }
+                ).catch(console.error);
                 return () => { if (scannerRef.current) scannerRef.current.stop(); };
             }, []);
 
             return (
                 <div className="min-h-screen bg-black text-white flex flex-col">
                     <header className="p-4 flex justify-between bg-zinc-900 border-b border-white/10">
-                        <button onClick={() => setView('menu')} className="font-bold text-zinc-400">← RETOUR</button>
-                        <h2 className="font-black text-green-500 italic">SCANNER EN DIRECT</h2>
+                        <button onClick={() => setView('menu')} className="font-bold">← RETOUR</button>
+                        <h2 className="font-black italic uppercase">SCANNER LIVE</h2>
                         <div className="w-10"></div>
                     </header>
-                    <div id="reader" className="flex-1 w-full"></div>
-                    {last && <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-green-500 px-8 py-4 rounded-full font-black text-xl animate-pulse shadow-2xl">{last}</div>}
+                    <div id="reader" className="flex-1"></div>
+                    {last && <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-green-500 px-8 py-4 rounded-full font-black text-xl animate-bounce shadow-2xl z-50">{last}</div>}
                 </div>
             );
         };
 
+        const LoginPage = () => {
+            const [email, setEmail] = useState('');
+            const [pass, setPass] = useState('');
+            const [err, setErr] = useState('');
+            const handleLogin = (e) => {
+                e.preventDefault();
+                firebase.auth().signInWithEmailAndPassword(email, pass)
+                    .catch(() => setErr("Email ou mot de passe incorrect!"));
+            };
+            return (
+                <div className="h-screen flex items-center justify-center p-6 bg-slate-900">
+                    <form onSubmit={handleLogin} className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-md border-b-[16px] border-blue-600">
+                        <div className="text-center mb-8">
+                           <h1 className="text-4xl font-black italic tracking-tighter uppercase text-slate-900">Admin Login</h1>
+                           <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mt-2">Accès Professeur</p>
+                        </div>
+                        <div className="space-y-4">
+                            <input type="email" placeholder="Email" onChange={e=>setEmail(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" />
+                            <input type="password" placeholder="Mot de passe" onChange={e=>setPass(e.target.value)} className="w-full p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-blue-500 font-bold" />
+                            {err && <p className="text-red-500 font-bold text-center text-sm">{err}</p>}
+                            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-2xl font-black text-xl shadow-lg shadow-blue-200 transition-all active:scale-95">SE CONNECTER</button>
+                        </div>
+                    </form>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
         function App() {
+            const [user, setUser] = useState(null);
             const [view, setView] = useState('menu');
             const [session, setSession] = useState({ currentQ: 0, showAnswers: false, module: 'excel' });
             const [responses, setResponses] = useState({});
@@ -200,132 +275,155 @@
             const fireDB = useRef(null);
 
             useEffect(() => {
-                const initFirebase = async () => {
+                const init = async () => {
+                    if (!window.firebase) { setTimeout(init, 200); return; }
                     try {
-                        const app = firebase.initializeApp(firebaseConfig);
-                        const db = firebase.firestore(app);
-                        const auth = firebase.auth(app);
+                        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                        const db = firebase.firestore();
+                        const auth = firebase.auth();
                         fireDB.current = db;
 
-                        // CORRECTION: Connexion Anonyme obligatoire pour éviter l'erreur de configuration
-                        await auth.signInAnonymously();
+                        auth.onAuthStateChanged(u => {
+                            setUser(u);
+                            if (u) {
+                                // SYNC SESSION (RULE 1: 6 segments obligatoire pour Document)
+                                const sessionRef = db.doc(`artifacts/${appId}/public/data/config/session`);
+                                sessionRef.onSnapshot(snap => {
+                                    if (snap.exists) setSession(snap.data()); // FIX: Use as property
+                                    else sessionRef.set({ currentQ: 0, showAnswers: false, module: 'excel' });
+                                });
 
-                        // Sync Config
-                        db.doc(`artifacts/${uniqueAppId}/config/session`).onSnapshot(snap => {
-                            if (snap.exists) setSession(snap.data());
+                                // SYNC RESPONSES (RULE 1: 5 segments pour Collection)
+                                db.collection(`artifacts/${appId}/public/data/responses`).onSnapshot(snap => {
+                                    const d = {};
+                                    snap.forEach(doc => d[doc.id] = doc.data());
+                                    setResponses(d);
+                                });
+                            }
+                            setLoading(false);
                         });
-
-                        // Sync Réponses
-                        db.collection(`artifacts/${uniqueAppId}/responses`).onSnapshot(snap => {
-                            const d = {};
-                            snap.forEach(doc => d[doc.id] = doc.data());
-                            setResponses(d);
-                        });
-
-                        setLoading(false);
                     } catch (e) {
-                        console.error("Firebase Auth/Init Error:", e);
+                        console.error(e);
                         setLoading(false);
                     }
                 };
-                initFirebase();
+                init();
             }, []);
 
-            const updateCloud = (up) => {
-                const ns = { ...session, ...up };
-                if (fireDB.current) fireDB.current.doc(`artifacts/${uniqueAppId}/config/session`).set(ns, {merge: true});
+            const updateCloud = async (up) => {
+                if (fireDB.current && user) await fireDB.current.doc(`artifacts/${appId}/public/data/config/session`).set(up, {merge: true});
             };
 
-            const submitVote = (sId, aIdx) => {
-                if (fireDB.current) fireDB.current.doc(`artifacts/${uniqueAppId}/responses/${sId}`).set({ answerIdx: aIdx, t: Date.now() });
+            const submitVote = async (sId, aIdx) => {
+                if (fireDB.current && user) await fireDB.current.doc(`artifacts/${appId}/public/data/responses/${sId}`).set({ answerIdx: aIdx, t: Date.now() });
             };
 
             const resetVotes = async () => {
-                updateCloud({ showAnswers: false });
-                if (fireDB.current) {
-                    const snap = await fireDB.current.collection(`artifacts/${uniqueAppId}/responses`).get();
-                    const batch = fireDB.current.batch();
-                    snap.forEach(doc => batch.delete(doc.ref));
-                    await batch.commit();
-                }
+                if (!fireDB.current || !user) return;
+                await updateCloud({ showAnswers: false });
+                const snap = await fireDB.current.collection(`artifacts/${appId}/public/data/responses`).get();
+                const batch = fireDB.current.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-black">CHARGEMENT...</div>;
+            if (loading) return <div className="h-screen flex flex-col items-center justify-center bg-slate-900 text-white font-black animate-pulse uppercase tracking-widest">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                Initialisation...
+            </div>;
+
+            if (!user) return <LoginPage />;
 
             if (view === 'menu') return (
-                <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-                    <h1 className="text-5xl font-black mb-2 italic">PLICKERS<span className="text-blue-600">.</span></h1>
-                    <p className="text-slate-400 font-bold mb-10 tracking-widest uppercase">Prof. A. RADOUANI</p>
+                <div className="min-h-screen flex flex-col bg-slate-50">
+                    <nav className="p-4 bg-white shadow-sm flex justify-between items-center no-print border-b">
+                        <span className="font-black italic tracking-tighter text-blue-600 uppercase">Prof. Radouani</span>
+                        <button onClick={() => firebase.auth().signOut()} className="text-xs font-bold bg-red-50 text-red-500 px-4 py-2 rounded-xl hover:bg-red-500 hover:text-white transition-all">DÉCONNEXION</button>
+                    </nav>
                     
-                    <div className="flex gap-4 mb-12 bg-white p-2 rounded-2xl shadow-sm border">
-                        <button onClick={() => updateCloud({module: 'word', currentQ: 0})} className={`px-6 py-2 rounded-xl font-black ${session.module === 'word' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>WORD</button>
-                        <button onClick={() => updateCloud({module: 'excel', currentQ: 0})} className={`px-6 py-2 rounded-xl font-black ${session.module === 'excel' ? 'bg-green-600 text-white' : 'text-slate-400'}`}>EXCEL</button>
-                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
+                        <div className="text-center">
+                            <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-slate-900 uppercase">PLICKERS<span className="text-blue-600">.</span></h1>
+                            <p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-sm mt-4">Évaluation Multimodale 1APIC</p>
+                        </div>
+                        
+                        <div className="flex flex-wrap justify-center gap-4 bg-white p-3 rounded-[2rem] shadow-xl border">
+                            <button onClick={() => updateCloud({module: 'word', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'word' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400'}`}>WORD</button>
+                            <button onClick={() => updateCloud({module: 'excel', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'excel' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400'}`}>EXCEL</button>
+                            <button onClick={() => updateCloud({module: 'google', currentQ: 0, showAnswers: false})} className={`px-8 py-3 rounded-2xl font-black transition-all ${session.module === 'google' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400'}`}>GOOGLE</button>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-                        <button onClick={() => setView('teacher')} className="bg-white p-10 rounded-3xl shadow-xl border-b-8 border-blue-600 hover:-translate-y-1 transition-all">
-                            <span className="text-4xl block mb-2">📊</span>
-                            <span className="font-black text-xl">DASHBOARD</span>
-                        </button>
-                        <button onClick={() => setView('scanner')} className="bg-white p-10 rounded-3xl shadow-xl border-b-8 border-green-500 hover:-translate-y-1 transition-all">
-                            <span className="text-4xl block mb-2">📸</span>
-                            <span className="font-black text-xl">SCANNER</span>
-                        </button>
-                        <button onClick={() => setView('print')} className="bg-white p-10 rounded-3xl shadow-xl border-b-8 border-purple-500 hover:-translate-y-1 transition-all">
-                            <span className="text-4xl block mb-2">🖨️</span>
-                            <span className="font-black text-xl">CARTES QR</span>
-                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+                            <button onClick={() => setView('teacher')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-blue-600 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
+                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">📊</span>
+                                DASHBOARD
+                            </button>
+                            <button onClick={() => setView('scanner')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-green-500 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
+                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">📸</span>
+                                SCANNER
+                            </button>
+                            <button onClick={() => setView('print')} className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[20px] border-purple-500 hover:-translate-y-2 transition-all font-black text-2xl group text-slate-800 text-center">
+                                <span className="block text-6xl mb-4 group-hover:scale-110 transition-transform">🖨️</span>
+                                CARTES QR
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
 
             if (view === 'teacher') {
-                const q = QUESTIONS[session.module][session.currentQ];
+                const qList = QUESTIONS[session.module];
+                const q = qList[session.currentQ];
                 return (
-                    <div className="min-h-screen flex flex-col bg-slate-50">
-                        <header className="bg-white p-4 shadow-sm flex justify-between items-center border-b">
-                            <button onClick={() => setView('menu')} className="font-black text-slate-400">← QUITTER</button>
-                            <div className="font-black uppercase tracking-tighter text-xl">SESSION : {session.module}</div>
-                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-bold">RESET</button>
+                    <div className="min-h-screen flex flex-col bg-slate-50 font-sans text-slate-900">
+                        <header className="bg-white p-4 flex justify-between items-center border-b sticky top-0 z-20 shadow-sm">
+                            <button onClick={() => setView('menu')} className="font-black text-slate-400 uppercase text-xs">← Menu</button>
+                            <div className="font-black uppercase tracking-widest text-slate-800">LIVE SESSION : {session.module}</div>
+                            <button onClick={resetVotes} className="bg-red-50 text-red-500 px-4 py-1 rounded-xl font-bold text-xs uppercase">Reset</button>
                         </header>
 
-                        <div className="p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="w-12 h-12 bg-white rounded-xl shadow-sm border font-black">◀</button>
-                                <div className="px-6 py-2 bg-white rounded-xl border font-black text-xl">Q{session.currentQ + 1}</div>
-                                <button onClick={() => updateCloud({currentQ: Math.min(QUESTIONS[session.module].length-1, session.currentQ + 1), showAnswers: false})} className="w-12 h-12 bg-white rounded-xl shadow-sm border font-black">▶</button>
+                        <div className="p-6 bg-white border-b flex flex-col md:flex-row justify-between items-center gap-6 shadow-md">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => updateCloud({currentQ: Math.max(0, session.currentQ - 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl border font-bold text-xl active:bg-zinc-200">◀</button>
+                                <div className="text-center bg-zinc-50 px-8 py-2 rounded-2xl border min-w-[150px]">
+                                    <span className="block text-[10px] font-black text-zinc-400 uppercase tracking-widest">Question</span>
+                                    <span className="text-4xl font-black text-slate-900">{session.currentQ + 1} / {qList.length}</span>
+                                </div>
+                                <button onClick={() => updateCloud({currentQ: Math.min(qList.length-1, session.currentQ + 1), showAnswers: false})} className="p-4 bg-zinc-100 rounded-2xl border font-bold text-xl active:bg-zinc-200">▶</button>
                             </div>
-                            <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-10 py-4 rounded-2xl font-black text-xl shadow-xl ${session.showAnswers ? 'bg-zinc-800 text-white' : 'bg-amber-500 text-white animate-pulse'}`}>
-                                {session.showAnswers ? "MASQUER LA RÉPONSE" : "RÉVÉLER LA RÉPONSE"}
+                            <button onClick={() => updateCloud({showAnswers: !session.showAnswers})} className={`px-16 py-5 rounded-full font-black text-2xl shadow-2xl transition-all active:scale-95 ${session.showAnswers ? 'bg-zinc-800 text-white' : 'bg-amber-500 text-white shadow-amber-200 animate-pulse'}`}>
+                                {session.showAnswers ? "MASQUER RÉPONSE" : "VOIR LA RÉPONSE"}
                             </button>
                         </div>
 
-                        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-                            <div className="lg:col-span-3 space-y-6">
-                                <div className="bg-white p-12 rounded-[2.5rem] shadow-sm border-b-8 border-zinc-200">
-                                    <h2 className="text-4xl font-black text-center">{q.q}</h2>
+                        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-8 overflow-hidden">
+                            <div className="lg:col-span-3 space-y-6 overflow-y-auto pb-20 pr-2">
+                                <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border-b-[16px] border-zinc-200 text-center">
+                                    <h3 className="text-3xl md:text-5xl font-black text-zinc-900 leading-tight">{q.q}</h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
                                     {q.a.map((ans, i) => (
-                                        <div key={i} className={`p-6 rounded-3xl border-4 flex items-center gap-6 ${session.showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-700' : 'bg-white border-transparent shadow-sm'}`}>
-                                            <span className="w-10 h-10 bg-black text-white flex items-center justify-center rounded-xl font-black">{"ABCD"[i]}</span>
-                                            <span className="text-2xl font-bold">{ans}</span>
+                                        <div key={i} className={`p-8 rounded-[2.5rem] border-4 flex items-center gap-8 transition-all duration-700 ${session.showAnswers && i === q.c ? 'bg-green-100 border-green-500 text-green-800 scale-[1.03] shadow-xl shadow-green-100' : 'bg-white border-transparent shadow-sm'}`}>
+                                            <span className={`w-16 h-16 md:w-20 md:h-20 rounded-[1.5rem] flex items-center justify-center text-4xl font-black shadow-inner ${session.showAnswers && i === q.c ? 'bg-green-600 text-white animate-bounce' : 'bg-slate-900 text-white'}`}>{"ABCD"[i]}</span>
+                                            <span className="text-2xl md:text-3xl font-black leading-tight text-slate-900">{ans}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-zinc-100 flex flex-col">
-                                <h3 className="font-black text-xl mb-4 text-zinc-400 uppercase tracking-widest">Votes ({Object.keys(responses).length})</h3>
-                                <div className="grid grid-cols-2 gap-2 overflow-y-auto">
+
+                            <div className="bg-white rounded-[3rem] shadow-2xl p-6 flex flex-col border-t-[12px] border-zinc-100 overflow-hidden">
+                                <h4 className="text-2xl font-black text-zinc-900 mb-6 uppercase tracking-tighter italic">VOTES ({Object.keys(responses).length})</h4>
+                                <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-1 pb-6">
                                     {STUDENTS.map(s => {
-                                        const r = responses[s.id];
-                                        const active = !!r;
-                                        const correct = active && session.showAnswers && r.answerIdx === q.c;
-                                        const wrong = active && session.showAnswers && r.answerIdx !== q.c;
+                                        const res = responses[s.id];
+                                        const color = res ? (session.showAnswers ? (res.answerIdx === q.c ? 'bg-green-500 text-white shadow-md border-green-600' : 'bg-red-400 text-white shadow-md border-red-500') : 'bg-blue-600 text-white animate-pulse shadow-lg shadow-blue-100') : 'bg-slate-50 border-slate-100 text-slate-300';
                                         return (
-                                            <div key={s.id} className={`p-3 rounded-2xl border text-center transition-all ${correct ? 'bg-green-500 text-white border-green-600' : wrong ? 'bg-red-400 text-white' : active ? 'bg-blue-600 text-white animate-pulse' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
-                                                <div className="text-[10px] font-black opacity-50">#{s.id}</div>
-                                                <div className="text-[12px] font-black uppercase truncate">{s.name.split(' ')[1]}</div>
+                                            <div key={s.id} className={`p-4 rounded-3xl border-2 flex flex-col items-center justify-center transition-all duration-500 ${color}`}>
+                                                <div className="flex items-center gap-1 mb-1">
+                                                    <span className="text-[8px] font-black opacity-50 text-inherit">#{s.id}</span>
+                                                    {res && <span className="px-2 py-0.5 rounded-lg font-black text-[10px] bg-white/20 text-inherit">{"ABCD"[res.answerIdx]}</span>}
+                                                </div>
+                                                <span className="font-black text-[10px] uppercase truncate w-full text-center leading-none text-inherit">{s.name.split(' ')[1]}</span>
                                             </div>
                                         );
                                     })}
@@ -336,25 +434,23 @@
                 );
             }
 
-            if (view === 'scanner') return <ScannerComp onScan={submitVote} setView={setView} />;
+            if (view === 'scanner') return <ScannerView submitVote={submitVote} setView={setView} />;
 
             if (view === 'print') return (
-                <div className="bg-white min-h-screen p-8">
-                    <div className="no-print mb-8 flex justify-between items-center bg-slate-50 p-6 rounded-3xl border">
-                        <button onClick={() => setView('menu')} className="font-black text-slate-500">← RETOUR</button>
-                        <button onClick={() => window.print()} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg">IMPRIMER LES CARTES</button>
-                    </div>
-                    <div className="max-w-[21cm] mx-auto space-y-8">
+                <div className="bg-white min-h-screen p-8 font-sans text-slate-900">
+                    <button onClick={() => setView('menu')} className="no-print mb-10 bg-black text-white px-10 py-4 rounded-2xl font-black shadow-xl uppercase transition-all active:scale-95">← Retour au menu</button>
+                    <div className="max-w-[21cm] mx-auto space-y-12">
                         {STUDENTS.map(s => (
-                            <div key={s.id} className="grid grid-cols-2 gap-4 page-break">
+                            <div key={s.id} className="grid grid-cols-2 gap-6 page-break py-4">
                                 {["A", "B", "C", "D"].map(L => (
-                                    <div key={L} className="border-4 border-black rounded-[2rem] p-6 flex flex-col items-center justify-between h-[13cm]">
-                                        <div className="text-8xl font-black">{L}</div>
+                                    <div key={L} className="border-[10px] border-black rounded-[4rem] p-10 flex flex-col items-center justify-between h-[13.5cm] bg-white relative">
+                                        <div className="text-9xl font-black leading-none text-black">{L}</div>
                                         <LocalQR text={`${s.id}-${L}`} />
-                                        <div className="text-center">
-                                            <div className="font-black text-xl uppercase italic">Prof. A. RADOUANI</div>
-                                            <div className="text-sm font-bold text-slate-400">ID: {s.id} | {s.name}</div>
+                                        <div className="text-center w-full border-t-4 border-black pt-6">
+                                            <div className="font-black text-3xl uppercase tracking-tighter text-black">{s.name}</div>
+                                            <div className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mt-2 italic">MASTER EVALUATION 1APIC</div>
                                         </div>
+                                        <div className="absolute top-8 right-8 font-black opacity-5 text-8xl select-none text-black">{L}</div>
                                     </div>
                                 ))}
                             </div>
